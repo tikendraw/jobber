@@ -80,7 +80,7 @@ async def main() -> dict:
         email=email,
         password=password,
         max_depth=2,
-        filter_dict=filter_values,
+        # filter_dict=filter_values,
         block_media=True,
         )
 
