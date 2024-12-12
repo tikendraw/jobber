@@ -2,14 +2,13 @@
 import os
 from functools import partial
 from pathlib import Path
-from typing import Literal, List
+from typing import List, Literal
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from config.baseconfig import YAMLConfigModel, get_base_config
 
-config_file = './parameters.yaml'
-
+parameter_file = './parameters.yaml'
 
 class Filters(BaseModel):
     sort_by: list[Literal['Most recent', 'Most relevant']] = Field(
@@ -73,21 +72,27 @@ class Filters(BaseModel):
         'Social impact', 'Work-life balance'
     ]] = Field(alias='Commitments', default_factory=list)
 
+    class Config:
+        exclude_unset=True
+        
 class ScrapperParams(BaseModel):
     cookies_file: str|Path = 'cookies.jsonl'
-    urls: List[str]|None = None
-    job_ids: List[int]|None = Field(description='[40xxxxxxxxx, 40xxxxxxxxx, 40xxxxxxxxx]', default=None)
+    urls: List[str] = Field(default_factory=list)
+    job_ids: List[int] = Field(description='[40xxxxxxxxx, 40xxxxxxxxx, 40xxxxxxxxx]', default_factory=list)
     login_url:str = 'https://www.linkedin.com/login'
-    email:str = os.environ['LINKEDIN_EMAIL']
-    password:str = os.environ['LINKEDIN_PASSWORD']
-    max_depth=2,
-    filter_dict:Filters
-    block_media:bool=True,
+    email:str = Field(exclude=True, default=os.environ.get('LINKEDIN_EMAIL'))
+    password:str = Field(exclude=True, default=os.environ.get('LINKEDIN_PASSWORD'))
+    max_depth:int=2
+    filters:Filters = Filters()
+    block_media:bool=True
     
 
 class ParametersConfig(YAMLConfigModel):
-    scrapper: ScrapperParams 
+    scrapper: ScrapperParams=ScrapperParams()
 
 
+get_parameters_config=partial(get_base_config, filename=parameter_file, output_cls=ParametersConfig)
 
-get_parameters_config=partial(get_base_config, filename=config_file, output_cls=ParametersConfig)
+# ParametersConfig().to_yaml(yaml_path=parameter_file)
+# a , _= get_parameters_config()
+# print(a.model_dump())
