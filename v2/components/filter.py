@@ -13,6 +13,12 @@ async def set_filters(page:Page, filters:dict, reset:bool=False):
     :param page: Playwright page object.
     :param filters: Dictionary of filter labels and their respective values.
     """
+    filters = {k:v for k,v in filters.items() if len(v)>0}
+
+    if not filters:
+        return
+    
+    
     # Open the filter modal
     filter_button = page.get_by_role('button', name='Show all filters')
     await filter_button.click()
