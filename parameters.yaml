@@ -3,7 +3,9 @@ scrapper:
   urls: []
   job_ids: []
   login_url: https://www.linkedin.com/login
-  max_depth: 2
+  search_type: 'People'
+  search_keyword: 'micky mouse'
+  max_depth: 1
   filters:
     sort_by: []
     date_posted: []
@@ -23,4 +25,3 @@ scrapper:
     benefits: []
     commitments: []
   block_media: true
-  

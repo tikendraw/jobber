@@ -7,6 +7,7 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 
 from config.baseconfig import YAMLConfigModel, get_base_config
+from v2.items.linkedin_objects import LinkedInCategory
 
 parameter_file = './parameters.yaml'
 
@@ -82,6 +83,8 @@ class ScrapperParams(BaseModel):
     login_url:str = 'https://www.linkedin.com/login'
     email:str = Field(exclude=True, default=os.environ.get('LINKEDIN_EMAIL'))
     password:str = Field(exclude=True, default=os.environ.get('LINKEDIN_PASSWORD'))
+    search_type:LinkedInCategory|None = None
+    search_keyword:str = ''
     max_depth:int=2
     filters:Filters = Filters()
     block_media:bool=True
