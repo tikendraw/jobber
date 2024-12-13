@@ -16,16 +16,7 @@ default_signin_button = "body > div.base-serp-page > header > nav > div > a.nav_
 alternative_signin_button = "#main-content > div > form > p > button"
 
 
-async def scroll_jobs(page:Page) :
-    job_container="#main > div > div.scaffold-layout__list-detail-inner.scaffold-layout__list-detail-inner--grow > div.scaffold-layout__list > div"
-    try:
-        await page.get_by_label("LinkedIn Footer Content").scroll_into_view_if_needed()
-    except Exception as e:
-        logger.error("Scrolling: Couldn't scroll into view")
-        await page.get_by_test_id(job_container).hover()
-        await page.mouse.wheel(0, 3000)
-        logger.info('Scrolling: Done')
-    
+in    
 async def full_login(url, email, password, filename, cookies=None):
     try: 
         async with async_playwright() as p:
@@ -109,11 +100,12 @@ async def is_logged_in(page: Page) -> bool:
         bool: True if the user is logged in, False otherwise.
     """
     try:
-        # Check for profile section (e.g., #ember20) or common logged-in URLs
-        profile_selector = "#ember20"
-        if await page.query_selector(profile_selector):
-            return True
+    
+        profile_button = page.get_by_role("button", name="Me", exact=True)
 
+        if profile_button.count() > 0:
+            return True
+        
         # Alternatively, check if "Sign In" button/link is missing
         signin_button = await page.query_selector(default_signin_button)
         if signin_button:
