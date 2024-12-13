@@ -1,14 +1,14 @@
 import re
 from logging import getLogger
 from typing import Literal, Optional, Tuple
-from playwright.async_api import ElementHandle,  Page, TimeoutError
+from playwright.async_api import ElementHandle, Page
 
 
 logger = getLogger(__name__)
 
 
 async def scroll_to(page:Page, selector:str)->None:
-    page.locator(selector=selector).scroll_into_view_if_needed(timeout=5*1000)
+    await page.locator(selector=selector).scroll_into_view_if_needed(timeout=5*1000)
     await page.wait_for_timeout(1000)
     
 async def scroll_container(page: Page, container_selector: str):
