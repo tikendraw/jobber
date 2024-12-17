@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List
+from asyncio import Semaphore, gather
+from typing import Any, Callable, List
 
 from playwright.async_api import BrowserContext, Page
 
@@ -6,62 +7,46 @@ from scrapper.logger import get_logger
 
 logger = get_logger(__name__)
 
-
-
 def batch_process_pages(max_page_count: int):
     """
-    A decorator to process URLs in batches using multiple pages.
+    A decorator to process URLs concurrently using a semaphore to limit the number of simultaneous page openings.
 
     Args:
-        max_page_count (int): Maximum number of pages to open simultaneously.
+        max_page_count (int): Maximum number of concurrent pages/tasks.
 
     Returns:
-        Decorated function that processes each page action.
+        Decorated function that processes each page action asynchronously.
     """
     def decorator(page_action: Callable[[Page, str], Any]):
-        async def wrapper(page:Page, context: BrowserContext, urls: List[str], *args, **kwargs) -> List[Any]:
-            results = []
-            remaining_urls = urls[:]  # Copy URLs to avoid modifying the original list
+        async def wrapper(context: BrowserContext, urls: List[str], *args, **kwargs) -> List[Any]:
+            results = []  # Store all results
+            semaphore = Semaphore(max_page_count)  # Limit concurrency to max_page_count
 
-            while remaining_urls:
-                # Process URLs in batches
-                current_batch = remaining_urls[:max_page_count]
-                remaining_urls = remaining_urls[max_page_count:]
-                open_pages = []
-                print(f"Processing {len(current_batch)} URLs...")
-                print(f'remaining urls: {len(remaining_urls)} URLs...', remaining_urls[:5])
-                try:
-                    # Create pages and navigate to URLs
-                    for url in current_batch:
-                        new_page = await context.new_page()
-                        open_pages.append((new_page, url))
-                        await new_page.goto(url, wait_until='domcontentloaded')
-
-                    # Perform the decorated action on each page
-                    for page, url in open_pages:
-                        try:
-                            result = await page_action(page, context, *args, **kwargs)
-                            if isinstance(result, list):
-                                print('result is list')
-                                results.extend(result)
-                            elif result is not None:
-                                print('result is not list')
-                                results.append(result)
-                        except Exception as e:
-                            logger.error(f"Error processing URL {url}: {e}")
-                        finally:
-                            await page.close()  # Ensure the page is closed
-                except Exception as e:
-                    logger.error(f"Error during batch processing: {e}")
-                finally:
-                    # Ensure all pages are closed
-                    for page, _ in open_pages:
-                        if not page.is_closed():
+            async def process_single_url(url: str):
+                """Helper function to process a single URL while respecting the semaphore."""
+                async with semaphore:  # Acquire semaphore to limit concurrency
+                    page = None
+                    try:
+                        # Open a new page within the shared context
+                        page = await context.new_page()
+                        await page.goto(url, wait_until='domcontentloaded')
+                        # Perform the action on the page
+                        result = await page_action(page, url, *args, **kwargs)
+                        if isinstance(result, list):
+                            results.extend(result)
+                        elif result is not None:
+                            results.append(result)
+                    except Exception as e:
+                        logger.error(f"Error processing URL {url}: {e}")
+                    finally:
+                        # Ensure the page is closed
+                        if page and not page.is_closed():
                             await page.close()
 
-            return results
+            # Use asyncio.gather to process URLs concurrently
+            await gather(*(process_single_url(url) for url in urls))
+
+            return results  # Return the collected results
+
         return wrapper
     return decorator
-
-
-
