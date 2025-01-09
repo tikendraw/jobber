@@ -1,13 +1,14 @@
 from asyncio import Semaphore, gather
+from functools import wraps
 from typing import Any, Callable, List
 
 from playwright.async_api import BrowserContext, Page
 
 from scrapper.logger import get_logger
-from functools import wraps
+
 logger = get_logger(__name__)
 
-def batch_process_pages(max_page_count: int):
+def batch_process_pages(max_page_count: int=2):
     """
     A decorator to process URLs concurrently using a semaphore to limit the number of simultaneous page openings.
 
@@ -21,13 +22,12 @@ def batch_process_pages(max_page_count: int):
         @wraps(page_action)
         async def wrapper(*args, **kwargs) -> List[Any]:
             urls = kwargs.pop('urls', [])
-            if max_page_count < 1:
-                max_page_count = kwargs.pop('max_page_count', 2)
+            max_page = kwargs.pop('max_page_count', max_page_count)
             results = []
-            semaphore = Semaphore(max_page_count)
+            semaphore = Semaphore(max_page)
 
             # Get context from kwargs
-            context = kwargs.pop('context')
+            context = kwargs.get('context')
             if not context:
                 raise ValueError("BrowserContext must be provided")
 
@@ -38,7 +38,7 @@ def batch_process_pages(max_page_count: int):
                         new_page = await context.new_page()
                         await new_page.goto(url, wait_until='domcontentloaded')
                         # Pass context in kwargs to maintain consistency
-                        result = await page_action(new_page, *args, **kwargs)
+                        result = await page_action(new_page, context, *args, **kwargs)
                         if isinstance(result, list):
                             results.extend(result)
                         elif result is not None:
@@ -52,7 +52,7 @@ def batch_process_pages(max_page_count: int):
             if urls:  # Only process if we have URLs
                 await gather(*(process_single_url(url) for url in urls))
             else:
-                logger.warning("No URLs provided for processing.") 
+                logger.warning("No URLs provided for processing.")
             return results
 
         return wrapper
