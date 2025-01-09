@@ -1,6 +1,0 @@
-path:
-  extracted_jobs_list_path: ./extracted_data
-  extracted_jobs_view_path: ./extracted_data/
-  saved_html_path: ./saved_html/
-db:
-  uri: sqlite:///linkedin.db

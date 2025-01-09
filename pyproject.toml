@@ -1,12 +1,14 @@
 [tool.poetry]
-name = "use-computer"
-version = "0.1.0"
+name = "scrappa"
+version = "0.1.2"
 description = ""
 authors = ["tikendraw <tikendraksahu1029@gmail.com>"]
 readme = "README.md"
 packages = [
     { include = "v2" },
-    { include = "config" },
+    { include = "config"},
+    { include = "linkedin"},
+    { include = "scrapper"},
 
 ]
 
@@ -21,6 +23,8 @@ autogen-agentchat = "0.4.0.dev9"
 litellm = "^1.53.7"
 prefect = "^3.1.5"
 sqlmodel = "^0.0.22"
+markdownify = "^0.14.1"
+markitdown = "^0.0.1a2"
 
 
 [tool.poetry.group.dev.dependencies]
