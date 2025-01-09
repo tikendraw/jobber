@@ -151,7 +151,7 @@ You are given a screenshot of a website, you have to extract various data fields
         response_format = {"type": "json_schema", "strict": True} if self.response_type == 'json_schema' else {"type": "json_object", "json_object": self.model_schema, "strict": True}
         return messages, response_format
 
-class LLMCombinedExtractionStrategy(LLMExtractionStrategy):
+class LLMExtractionStrategyMultiSource(LLMExtractionStrategy):
     def __init__(self, model: str, extraction_model: Type[BaseModel], 
                  clean_html_func: Callable[[str], str] = clean_html, 
                  *args, **kwargs):
@@ -159,6 +159,10 @@ class LLMCombinedExtractionStrategy(LLMExtractionStrategy):
         self.clean_html_func = clean_html_func
         self.extraction_prompt = """
 You are given a screenshot of a website and also the corresponding HTML. You have to extract various data fields mentioned below by cross-referencing both sources. Get semantics from the image and textual info from html. Only return a valid JSON object. No explanation or anything is needed, pure JSON with data fields.
+Points to consider:
+- Get the idea of what kind of items are getting extracted.
+- If there is more relevent extraction data in html which may/may not be visible in the screenshot, extract them as well.
+- if there are n number of extraction items in html, but only 5 are visible in screenshot, you get them all, screenshot can not be infinately long, but we have the necessary data).
 
 ==FIELDS TO EXTRACT==
 {fields_to_extract}
