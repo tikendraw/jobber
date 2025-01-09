@@ -22,10 +22,11 @@ class ExtractionStrategyBase(Protocol):
         """Async extracts data from page response and sets it to page_response.extracted_data."""
         pass
 
-
 class LLMExtractionStrategy(ExtractionStrategyBase, ABC):
-    def __init__(self, model: str, extraction_model: Type[BaseModel], api_key: str = None, 
-                 fallbacks=None, verbose: bool = False, validate_json: bool = True, *args, **kwargs):
+    def __init__(self, model: str, extraction_model: Type[BaseModel], api_key: str = None,
+                 fallbacks=None, verbose: bool = False, validate_json: bool = True,
+                 additional_instruction: Optional[str] = None, *args, **kwargs):
+        self.additional_instruction = additional_instruction
         self.model = model
         self.__api_key = api_key
         self.extraction_model = extraction_model
@@ -120,16 +121,18 @@ You are given a HTML text, you have to extract various data fields mentioned bel
 ===HTML=======
 {html_str}
 =============
+{additional_instructions}
 """
 
     def _preparation(self, page_response: PageResponse, *args, **kwargs):
         """Prepares the message and response format for the LLM."""
         html = self.clean_html_func(page_response.html) if self.clean_html_func else page_response.html
-        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema, html_str=html)
+        additional_instructions = f"\nADDITIONAL INSTRUCTIONS: {self.additional_instruction}" if self.additional_instruction else ""
+        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema, html_str=html, additional_instructions=additional_instructions)
         messages = [{'role': 'user', 'content': prompt}]
         response_format = {"type": "json_schema", "strict": True}
         return messages, response_format
-
+    
 class LLMExtractionStrategyIMAGE(LLMExtractionStrategy):
     def __init__(self, model: str, extraction_model: Type[BaseModel], 
                  response_type: Literal['json_schema', 'json_object'] = 'json_schema', 
@@ -142,14 +145,17 @@ You are given a screenshot of a website, you have to extract various data fields
 ==FIELDS TO EXTRACT==
 {fields_to_extract}
 =====================
+{additional_instructions}
 """
 
     def _preparation(self, page_response: PageResponse, *args, **kwargs) -> Tuple[list[dict], dict]:
         """Prepares the message and response format for the LLM."""
-        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema)
+        additional_instructions = f"\nADDITIONAL INSTRUCTIONS: {self.additional_instruction}" if self.additional_instruction else ""
+        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema, additional_instructions=additional_instructions)
         messages = [parse_image(image=page_response.screenshot_path, message=prompt)]
         response_format = {"type": "json_schema", "strict": True} if self.response_type == 'json_schema' else {"type": "json_object", "json_object": self.model_schema, "strict": True}
         return messages, response_format
+    
 
 class LLMExtractionStrategyMultiSource(LLMExtractionStrategy):
     def __init__(self, model: str, extraction_model: Type[BaseModel], 
@@ -157,6 +163,7 @@ class LLMExtractionStrategyMultiSource(LLMExtractionStrategy):
                  *args, **kwargs):
         super().__init__(model, extraction_model, *args, **kwargs)
         self.clean_html_func = clean_html_func
+
         self.extraction_prompt = """
 You are given a screenshot of a website and also the corresponding HTML. You have to extract various data fields mentioned below by cross-referencing both sources. Get semantics from the image and textual info from html. Only return a valid JSON object. No explanation or anything is needed, pure JSON with data fields.
 Points to consider:
@@ -171,12 +178,14 @@ Points to consider:
 ===HTML=======
 {html_str}
 =============
+{additional_instructions}
 """
 
     def _preparation(self, page_response: PageResponse, *args, **kwargs):
         """Prepares the message and response format for the LLM."""
         html = self.clean_html_func(page_response.html) if self.clean_html_func else page_response.html
-        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema, html_str=html)
+        additional_instructions = f"\nADDITIONAL INSTRUCTIONS: {self.additional_instruction}" if self.additional_instruction else ""
+        prompt = self.extraction_prompt.format(fields_to_extract=self.model_schema, html_str=html, additional_instructions=additional_instructions)
         messages = [parse_image(image=page_response.screenshot_path, message=prompt)]
         response_format = {"type": "json_schema", "strict": True}
         return messages, response_format

@@ -2,7 +2,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from sqlmodel import  Session, SQLModel, create_engine, select
-from v2.models import Company, JobListing, RawContent
+from linkedin.models import Company, JobListing, RawContent
 
 from config.config_class import get_config
 

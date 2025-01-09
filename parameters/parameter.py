@@ -7,7 +7,7 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 
 from config.baseconfig import YAMLConfigModel, get_base_config
-from v2.items.linkedin_objects import LinkedInCategory
+from scrapper.items.linkedin_objects import LinkedInCategory
 
 parameter_file = './parameters.yaml'
 
