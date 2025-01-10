@@ -41,7 +41,9 @@ class YAMLConfigModel(BaseModel):
             config_dict = yaml.safe_load(file)
         
         # Create model instance with validation
-        return cls(**config_dict)
+        if config_dict:
+            return cls(**config_dict)
+        raise ValueError('Invalid YAML configuration')
     
     def to_yaml(self, yaml_path: Path | str, **dump_kwargs: Any) -> None:
         """
@@ -86,7 +88,7 @@ def get_base_config(filename: str, output_cls: Type[YAMLConfigModel]) -> Tuple[Y
     if os.path.exists(filename):
         try:
             config = output_cls.from_yaml(filename)
-        except ValidationError:
+        except (ValidationError, ValueError):
             config = output_cls()
             config.to_yaml(filename)
             new_config_created = True
