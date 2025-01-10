@@ -1,8 +1,9 @@
 # infrastructure/database/models.py
 from typing import Optional
 
-from infrastructure.database.base_model import BaseModel
 from sqlmodel import Field
+
+from v2.infrastructure.database.base_model import BaseModel
 
 
 class RawContent(BaseModel, table=True):

@@ -3,10 +3,11 @@ from abc import ABC, abstractmethod
 from typing import Callable, Literal, Optional, Protocol, Tuple, Type
 
 import litellm
-from core.page_output import PageResponse
-from infrastructure.logging.logger import get_logger
 from litellm import acompletion, completion
 from pydantic import BaseModel, ValidationError
+
+from v2.core.page_output import PageResponse
+from v2.infrastructure.logging.logger import get_logger
 
 from .extraction_utils import clean_html, get_dict, parse_image
 

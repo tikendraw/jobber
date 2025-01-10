@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 import markdownify
-from core.utils.string_utils import clean_html
-from infrastructure.logging.logger import get_logger
+from v2.core.utils.string_utils import clean_html
+from v2.infrastructure.logging.logger import get_logger
 from playwright.async_api import Page
 from pydantic import BaseModel
 
