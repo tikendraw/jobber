@@ -2,27 +2,27 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional
 
-from scrapper.v2.core.extraction.extraction import ExtractionStrategyBase
-from scrapper.v2.core.page_output import PageResponse, parse_page_response
-from scrapper.v2.core.utils.file_utils import save_json
-from scrapper.v2.core.utils.string_utils import extract_links_from_string
-from scrapper.v2.infrastructure.database.db_utils import (
+from playwright.async_api import Page
+
+from v2.core.extraction.extraction import ExtractionStrategyBase
+from v2.core.page_output import PageResponse, parse_page_response
+from v2.core.utils.file_utils import save_json
+from v2.core.utils.string_utils import extract_links_from_string
+from v2.infrastructure.database.db_utils import (
     engine,
     store_extracted_content,
     store_raw_content,
 )
-from scrapper.v2.infrastructure.logging.logger import get_logger
-from scrapper.v2.platforms.base_platform import WebsitePlatform
-from scrapper.v2.platforms.linkedin.linkedin_objects import (
+from v2.infrastructure.logging.logger import get_logger
+from v2.platforms.action_utils import expand_all_buttons, scroll_container
+from v2.platforms.base_platform import WebsitePlatform
+from v2.platforms.linkedin.linkedin_objects import (
     Company,
     HiringTeam,
     JobDescription,
     JobListing,
 )
-from playwright.async_api import Page
-
-from scrapper.action_handler import expand_all_buttons, scroll_container
-from scrapper.hooks import perform_login
+from v2.platforms.linkedin.linkedin_utils import perform_login, set_filters
 
 logger = get_logger(__name__)
 
@@ -49,31 +49,33 @@ class LinkedInPlatform(WebsitePlatform):
         """Logs in to LinkedIn"""
         await perform_login(page, email=credentials.get('email'), password=credentials.get('password'), action='login')
 
-    async def navigate_to_search(self, page: Page, search_params: Dict[str, str]) -> None:
+    async def search_action(self, page: Page, search_params: Dict[str, str]) -> None:
         """Navigates to LinkedIn's job search"""
         url = f"https://www.linkedin.com/jobs/search/?keywords={search_params.get('keywords')}"
         await page.goto(url, wait_until='domcontentloaded')
 
-    async def handle_search_results(self, page: Page, *args, **kwargs) -> List[PageResponse]:
+    async def after_search_action(self, page: Page, *args, **kwargs) -> List[PageResponse]:
        """Handles result pages for Linkedin"""
        content = []
        
        filter_dict = kwargs.get('filter_dict')
        max_depth = kwargs.get('max_depth', 1)
-       if filter_dict:
-          from scrapper.filter_handler import set_filters
-          await set_filters(page, filter_dict)
-
+       
        result = await self.rolldown_next_button(
           page=page,
           next_button_func=self.has_next_page,
           action=self.job_list_page_action,
           current_depth=1,
-          max_depth=max_depth
+          max_depth=max_depth,
+          filter_dict=filter_dict,
         )
        content.extend(result)
        return content
     
+    async def apply_filters(self, page:Page, filters:dict)->None:
+        """Applies the filters to the linkedin page"""
+        await set_filters(page, filters)
+
     async def job_list_page_action(self, page:Page):
         try:
             await scoll_jobs_list_container(page)
@@ -117,7 +119,8 @@ class LinkedInPlatform(WebsitePlatform):
         next_button_func: Callable[[Page], tuple[bool, Any]] = None,
         current_depth: int = 1,
         max_depth: int = 10,
-        action:Callable = None
+        action:Callable = None,
+        filter_dict:dict = None,
     ) -> list[PageResponse]:
         """
         Handles recursive navigation through a "next button" workflow, collecting page content.
@@ -132,6 +135,9 @@ class LinkedInPlatform(WebsitePlatform):
         content = []
     
         try:
+            if filter_dict:
+                await self.apply_filters(page, filter_dict)
+
             await action(page)
             await page.wait_for_timeout(2000)
             page_res = await parse_page_response(page)
@@ -153,7 +159,8 @@ class LinkedInPlatform(WebsitePlatform):
                         next_button_func=next_button_func,
                         current_depth=current_depth + 1,
                         max_depth=max_depth,
-                        action=action
+                        action=action,
+                        filter_dict = filter_dict
                     )
                     content.extend(next_content)
         except Exception as e:
@@ -499,7 +506,7 @@ class LinkedInPlatform(WebsitePlatform):
             return job_description
         
         
-        from linkedin.items.linkedin_objects import (
+        from platforms.linkedin.linkedin_objects import (
             LinkedInCategory,
             classify_linkedin_url,
         )
