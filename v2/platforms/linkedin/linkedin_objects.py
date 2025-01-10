@@ -1,11 +1,12 @@
 # platforms/linkedin/linkedin_objects.py
 from typing import List, Optional
 
-from infrastructure.database.base_model import BaseModel as SqlBaseModel
 from pydantic import BaseModel, Field
 
+from v2.infrastructure.database.base_model import BaseModel as SqlBaseModel
 
-class Company(SqlBaseModel, table=True):
+
+class Company(BaseModel):
     name: Optional[str] = Field(default=None, index=True)
     profile_link: Optional[str] = Field(default=None)
     about: Optional[str] =  Field(default=None, description='About the company text.')
@@ -17,11 +18,11 @@ class Company(SqlBaseModel, table=True):
     linkedin_count: Optional[str] = Field(default=None, description='Number of employees in LinkedIn connections')
 
 
-class HiringTeam(SqlBaseModel, table=True):
+class HiringTeam(BaseModel):
     name: Optional[str] = Field(default=None, description='Name of the hiring person')
     profile_link: Optional[str] = Field(default=None, description='Profile link of the hiring team person')
 
-class JobListing(SqlBaseModel, table=True):
+class JobListing(BaseModel):
     verified: bool = Field(default=False)
     # company_id: Optional[int] = Field(default=None, foreign_key="company.id")
     # company: Optional[Company] = Relationship(back_populates="job_listings")
@@ -43,7 +44,7 @@ class JobListing(SqlBaseModel, table=True):
 
 
 
-class JobDescription(SqlBaseModel, table=True):
+class JobDescription(BaseModel):
     verified: bool = Field(default=False, description='a varified badge next to the company/job name')
     job_id: Optional[str] = Field(default=None, description='can be extracted from the url.')
     job_title: Optional[str] = Field(default=None)
