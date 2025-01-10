@@ -1,13 +1,13 @@
 # platforms/indeed/indeed_platform.py
 from typing import Callable, Dict, List, Optional
 
-from core.page_output import PageResponse, parse_page_response
-from core.utils.file_utils import save_json
-from infrastructure.logging.logger import get_logger
-from platforms.base_platform import WebsitePlatform
+from v2.core.page_output import PageResponse, parse_page_response
+from v2.core.utils.file_utils import save_json
+from v2.infrastructure.logging.logger import get_logger
+from v2.platforms.base_platform import WebsitePlatform
 from playwright.async_api import Page
 
-from scrapper.action_handler import scroll_to_element
+from v2.platforms.action_utils import scroll_to_element
 
 logger = get_logger(__name__)
 
