@@ -18,7 +18,7 @@ class CSSSelectorConfig(BaseModel):
     attribute_name: Optional[str] = None
     multiple: bool = False
     default_value: Optional[str | int | float | dict | list] = None
-
+    fields: Optional[Dict[str, 'CSSSelectorConfig']] = None
     def validate(self):
         """Validate the configuration."""
         if self.extract_type == 'attribute' and not self.attribute_name:
@@ -37,8 +37,9 @@ class CSSExtractionModel(BaseModel):
                 fields[key] = CSSSelectorConfig(selector=value, multiple=multiple)
             elif isinstance(value, dict):
                 multip = value.pop('multiple', multiple)
+                if 'fields' in value:
+                  value['fields'] =  CSSExtractionModel.from_dict(value['fields'])
                 fields[key] = CSSSelectorConfig(**value, multiple=multip)
-
         return cls(fields=fields)
 
 
@@ -78,19 +79,59 @@ class CSSExtractionStrategy(ExtractionStrategyBase):
                     if config.multiple:
                         elements_data = []
                         for el in locator:
-                            element_data = self._get_element_data(el, config)
-                            elements_data.append(element_data)
+                          if config.fields:
+                              element_data = await self._extract_nested_data(el, config.fields)
+                              elements_data.append(element_data)
+                          else:
+                              element_data = self._get_element_data(el, config)
+                              elements_data.append(element_data)
                         data[field] = elements_data
                     else:
                         el = locator[0]
-                        element_data = self._get_element_data(el, config)
-                        data[field] = element_data
+                        if config.fields:
+                            element_data = await self._extract_nested_data(el, config.fields)
+                            data[field]=element_data
+                        else:
+                          element_data = self._get_element_data(el, config)
+                          data[field] = element_data
 
                 except Exception as e:
                     logger.error(f"Error extracting data for field '{field}' with selector '{config.selector}': {e}", exc_info=True)
                     data[field] = None
 
             return data
+    async def _extract_nested_data(self, element, nested_fields:CSSExtractionModel)->Dict:
+        """Extracts data based on nested selectors"""
+        
+        data = {}
+        for field, config in nested_fields.fields.items():
+           try:
+              
+                locator = element.select(config.selector)
+                if not locator:
+                    if config.default_value is not None:
+                       data[field] = config.default_value
+                    else:
+                         logger.debug(f"No element found for selector '{config.selector}' field '{field}'.")
+                         data[field] = None
+                    continue
+                    
+                if config.multiple:
+                    elements_data = []
+                    for el in locator:
+                      element_data = self._get_element_data(el, config)
+                      elements_data.append(element_data)
+                    data[field] = elements_data
+                else:
+                    el = locator[0]
+                    element_data = self._get_element_data(el, config)
+                    data[field] = element_data
+
+           except Exception as e:
+            logger.error(f"Error extracting data for field '{field}' with selector '{config.selector}': {e}", exc_info=True)
+            data[field] = None
+
+        return data
      
     def _get_element_data(self, element, config:CSSSelectorConfig)-> str | None:
         if config.extract_type == 'text':
@@ -103,8 +144,6 @@ class CSSExtractionStrategy(ExtractionStrategyBase):
         elif config.extract_type == 'html':
             return str(element)
         return None
-    
-    
 
 
 # class CSSExtractionModel(BaseModel):
