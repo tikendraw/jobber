@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment  # Import Comment class
 
 
 def get_dict(x: Optional[str]) -> dict|str:
@@ -94,90 +94,54 @@ def parse_image(image:str|Path, message:str=None)->list[dict]:
     return {'role':'user', 'content':content}
     
     
-
-def clean_html(html_str):
+def clean_html(html_str, elements_to_remove: list[str] = None):
     """
     Removes unnecessary HTML elements and attributes, keeping visual/text content.
 
     Args:
       html_str: A string of HTML.
+      elements_to_remove (list, optional): List of elements to remove (tags, classes, ids). Defaults to None.
 
     Returns:
       A string of cleaned HTML.
     """
-
     soup = BeautifulSoup(html_str, 'html.parser')
 
     # Remove comments
-    for comment in soup.find_all(string=lambda text: isinstance(text, str) and '<!--' in text):
-      comment.extract()
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
 
-    # Remove script tags
-    for script in soup.find_all('script'):
-        script.extract()
+    # Remove script, style, noscript, and meta tags
+    for tag_name in ['script', 'style', 'noscript', 'meta', 'img', 'a', 'form']:
+        for tag in soup.find_all(tag_name):
+            tag.extract()
 
-    # Remove style tags
-    for style in soup.find_all('style'):
-        style.extract()
+    # Remove specified elements by tag name
+    if elements_to_remove:
+        for tag in elements_to_remove:
+            for element in soup.find_all(tag):
+                element.extract()
 
-    # Remove noscript tags
-    for noscript in soup.find_all('noscript'):
-        noscript.extract()
-
-    # Remove meta tags
-    for meta in soup.find_all('meta'):
-        meta.extract()
-
-    # # Remove link tags (mostly for CSS, etc.)
-    # for link in soup.find_all('link'):
-    #   link.extract()
-
-    # Remove img tags
-    for img in soup.find_all('img'):
-        img.extract()
-
-    # Remove anchor tags
-    for a in soup.find_all('a'):
-        a.extract()
-
-    # # Remove buttons
-    # for button in soup.find_all('button'):
-    #   button.extract()
-
-    # Remove forms
-    for form in soup.find_all('form'):
-      form.extract()
-
-    # Remove elements with specific classes and ids
-    elements_to_remove = [
-        "header", "footer", "navigation", "sidebar",
-        "ad", "banner", "cookie-banner", "modal", "nav"
-    ]
-    for tag in soup.find_all(True, class_=lambda x: x in elements_to_remove if x else False) :
-         tag.extract()
-    for tag in soup.find_all(True, id=lambda x: x in elements_to_remove if x else False) :
-         tag.extract()
+    # Remove elements with specific classes or ids
+    for tag in soup.find_all(True):
+        if 'class' in tag.attrs and any(cls in tag['class'] for cls in elements_to_remove or []):
+            tag.extract()
+        if 'id' in tag.attrs and tag['id'] in elements_to_remove:
+            tag.extract()
 
     # Remove code tags
     for code in soup.find_all('code'):
-          code.extract()
-          
-    # Remove style attributes
-    for tag in soup.find_all(True):
-        if 'style' in tag.attrs:
-          del tag.attrs['style']
+        code.extract()
 
-    # Remove class and id attributes (most)
+    # Remove style, class, and id attributes
     for tag in soup.find_all(True):
-      if "class" in tag.attrs:
-          del tag.attrs["class"]
-      if "id" in tag.attrs:
-          del tag.attrs["id"]
+        for attr in ['style', 'class', 'id']:
+            if attr in tag.attrs:
+                del tag.attrs[attr]
 
     # Remove empty tags (excluding br and hr)
     for tag in soup.find_all(True):
         if not tag.contents and tag.name not in ['br', 'hr']:
             tag.extract()
 
-    # Return the cleaned HTML
     return str(soup)
