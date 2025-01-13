@@ -6,67 +6,47 @@ from datetime import datetime
 from v2.config.config_loader import get_config
 from v2.config.parameters import get_parameters_config
 
-# from v2.core.utils.file_utils import save_json
-# from v2.platforms.indeed.indeed_platform import IndeedPlatform
-# from v2.platforms.linkedin.linkedin_platform import LinkedInPlatform
+from v2.platforms.dummy import DummyPage
 from v2.scraper.scraper_engine import ScraperEngine
+from v2.core.extraction.css_extraction import CSSExtractionModel, CSSExtractionStrategy
+import json
+from pathlib import Path
+from v2.platforms.dummy import DummyWebsitePlatform
 
 config = get_config()
 parameters = get_parameters_config()
 
-# async def main():
-#     # config = get_config()
-#     # parameters = get_parameters_config()
+cssclass = CSSExtractionModel.from_dict({
+        "header_logo_link": {"selector": "#logo a", "extract_type": "attribute", "attribute_name": "href"},
+        "main_navigation_links": {"selector": "div.navigation ul li a", "extract_type": "text"},
+        "performance_title": "div#performance-title h1",
+        "at_a_glance_heading": "div#performance-aag h2",
+          "naming_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Naming')) div.perf-panel-result", "extract_type":"text"},
+            "protocol_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Protocol Parameters')) div.perf-panel-result", "extract_type":"text"},
+            "numbers_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Numbers')) div.perf-panel-result", "extract_type":"text"},
+          "satisfaction_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Satisfaction')) div.perf-panel-result", "extract_type":"text"},
+           "system_status":{"selector": "div.performance-aag-panel:has(h3:contains('System Status')) td:last-child", "extract_type":"text" },
+           "security_status": {"selector":"div.performance-aag-panel:has(h3:contains('Security')) td:last-child", "extract_type":"text"},
+       "report_links": {"selector": "div#performance-report-grid div.performance-report-item h3 a", "extract_type": "attribute", "attribute_name": "href"},
+       "footer_links":  {"selector":"table.navigation a", "extract_type":"text"},
+       "custodian_text":"div#custodian p",
+       "legal_notices": {"selector": "div#legalnotice ul li a", "extract_type":"text"},
+       })
 
-#     # LinkedIn Scrapping
-#     linkedin_platform = LinkedInPlatform()
-#     linkedin_scraper = ScraperEngine(
-#         platform=linkedin_platform,
-#         extraction_strategy=linkedin_platform.extraction_strategy,
-#     )
-#     linkedin_results = await linkedin_scraper.scrap(
-#         search_params={'keywords': parameters.scrapper.search_keyword},
-#         credentials={'email': parameters.scrapper.email, 'password': parameters.scrapper.password},
-#         filter_dict=parameters.scrapper.filters.model_dump(exclude_unset=True),
-#         max_depth=parameters.scrapper.max_depth
-#     )
-#     tim = datetime.now()
-#     for i in linkedin_results:
-#         save_json(
-#             json_object=i.model_dump(),
-#             filename=f"./saved_content/{tim}/linkedin_page_response-{datetime.now()}.json",
-#         )
-
-#     # Indeed Scrapping (example)
-#     indeed_platform = IndeedPlatform()
-#     indeed_scraper = ScraperEngine(
-#         platform=indeed_platform,
-#     )
-#     indeed_results = await indeed_scraper.scrap(
-#        search_params={'keywords': parameters.scrapper.search_keyword},
-#        credentials={'email': parameters.scrapper.email, 'password': parameters.scrapper.password},
-#         max_depth=parameters.scrapper.max_depth,
-#     )
-    
-#     tim = datetime.now()
-#     for i in indeed_results:
-#         save_json(
-#             json_object=i.model_dump(),
-#             filename=f"./saved_content/{tim}/indeed_page_response-{datetime.now()}.json",
-#         )
-
+dummy_page = DummyPage()
+dummy_page.extraction_model=cssclass 
+dummy_page.extraction_strategy=CSSExtractionStrategy(model=cssclass)
 
 async def main():
-    from v2.platforms.dummy import DummyWebsitePlatform
     dummy_platform = DummyWebsitePlatform()
+    dummy_platform.pages = [dummy_page]
+    
     engine = ScraperEngine(platform=dummy_platform, max_concurrent=2)
     # urls = ['https://www.example.com', 'https://www.example.org', 'https://www.example.net/some/path/here']
-    results = await engine.scrap(urls = ["https://www.iana.org/performance","https://www.iana.org/about/presentations", 'https://www.iana.org/about/audits',], #,'https://www.iana.org/numbers','https://www.iana.org/about', 'https://www.iana.org/domains'],
+    results = await engine.scrap(urls = ["https://www.iana.org/performance", ],#"https://www.iana.org/about/presentations", 'https://www.iana.org/about/audits',], #,'https://www.iana.org/numbers','https://www.iana.org/about', 'https://www.iana.org/domains'],
                                 block_media=True, headless=False)
     # for res in results:
     #     print()
-    import json
-    from pathlib import Path
 
     for res in results:
         # save as json
@@ -79,9 +59,5 @@ async def main():
         
         
 
-    # results2 = await engine.scrap(credentials = {"user":"test", "pass": "test"}, search_params={'keywords':'test'},
-    #                             block_media=True)
-    # for res in results2:
-    #     print(res.text[:100])
 if __name__ == "__main__":
     asyncio.run(main())
