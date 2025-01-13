@@ -1,63 +1,89 @@
 # steps/01_scrap_job.py
 import asyncio
-import os
+import json
 from datetime import datetime
+import os
+from pathlib import Path
 
 from v2.config.config_loader import get_config
 from v2.config.parameters import get_parameters_config
-
-from v2.platforms.dummy import DummyPage
+from v2.platforms.linkedin.linkedin_platform import LinkedInPlatform
 from v2.scraper.scraper_engine import ScraperEngine
-from v2.core.extraction.css_extraction import CSSExtractionModel, CSSExtractionStrategy
-import json
-from pathlib import Path
-from v2.platforms.dummy import DummyWebsitePlatform
 
 config = get_config()
 parameters = get_parameters_config()
 
-cssclass = CSSExtractionModel.from_dict({
-        "header_logo_link": {"selector": "#logo a", "extract_type": "attribute", "attribute_name": "href"},
-        "main_navigation_links": {"selector": "div.navigation ul li a", "extract_type": "text"},
-        "performance_title": "div#performance-title h1",
-        "at_a_glance_heading": "div#performance-aag h2",
-          "naming_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Naming')) div.perf-panel-result", "extract_type":"text"},
-            "protocol_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Protocol Parameters')) div.perf-panel-result", "extract_type":"text"},
-            "numbers_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Numbers')) div.perf-panel-result", "extract_type":"text"},
-          "satisfaction_sla": {"selector":"div.performance-aag-panel:has(h3:contains('Satisfaction')) div.perf-panel-result", "extract_type":"text"},
-           "system_status":{"selector": "div.performance-aag-panel:has(h3:contains('System Status')) td:last-child", "extract_type":"text" },
-           "security_status": {"selector":"div.performance-aag-panel:has(h3:contains('Security')) td:last-child", "extract_type":"text"},
-       "report_links": {"selector": "div#performance-report-grid div.performance-report-item h3 a", "extract_type": "attribute", "attribute_name": "href"},
-       "footer_links":  {"selector":"table.navigation a", "extract_type":"text"},
-       "custodian_text":"div#custodian p",
-       "legal_notices": {"selector": "div#legalnotice ul li a", "extract_type":"text"},
-       })
-
-dummy_page = DummyPage()
-dummy_page.extraction_model=cssclass 
-dummy_page.extraction_strategy=CSSExtractionStrategy(model=cssclass)
-
 async def main():
-    dummy_platform = DummyWebsitePlatform()
-    dummy_platform.pages = [dummy_page]
-    
-    engine = ScraperEngine(platform=dummy_platform, max_concurrent=2)
-    # urls = ['https://www.example.com', 'https://www.example.org', 'https://www.example.net/some/path/here']
-    results = await engine.scrap(urls = ["https://www.iana.org/performance", ],#"https://www.iana.org/about/presentations", 'https://www.iana.org/about/audits',], #,'https://www.iana.org/numbers','https://www.iana.org/about', 'https://www.iana.org/domains'],
-                                block_media=True, headless=False)
-    # for res in results:
-    #     print()
+	# Initialize LinkedIn platform
+	linkedin_platform = LinkedInPlatform()
 
-    for res in results:
-        # save as json
-        f = Path(f"./saved_content/{datetime.now()}/dummy_page_response-{datetime.now()}.json")
-        f.parent.mkdir(parents=True, exist_ok=True)
-        f.touch(exist_ok=True)
+	# Initialize scraper engine
+	engine = ScraperEngine(platform=linkedin_platform, max_concurrent=2)
 
-        with open(f, "w") as f:
-            json.dump(res.model_dump(), f)
-        
-        
+	# Test credentials - replace with your actual test credentials
+	credentials = {
+	    "email": os.environ['LINKEDIN_EMAIL'],
+	    "password": os.environ['LINKEDIN_PASSWORD']
+	}
+
+	# # Test search parameters
+	# search_params = {
+	#     "keywords": "python developer"
+	# }
+
+
+	# # Test filters
+	# filters = {
+	#     "date_posted": "past_24_hours",
+	#     "experience_level": ["entry_level", "associate"],
+	#     "job_type": ["full_time"],
+	#     "remote": ["remote"]
+	# }
+
+	jobidss = [
+	# "4087346469","4091815560","4086292665","4091997736","4087347086","4091838136",
+	"4086226489","4089336430",
+ 	# "4091170093","4093144757","4091992850","4091407880",
+	]
+	# job_url_list_base = (
+	# "https://www.linkedin.com/jobs/search/?alertAction=viewjobs&currentJobId="
+	# )
+	job_url_view_base = "https://www.linkedin.com/jobs/view/"
+
+	job_urls = [job_url_view_base + i for i in jobidss]
+
+	try:
+		# Run the scraper
+		results = await engine.scrap(
+ 		# search_params=search_params,
+		urls = job_urls,
+		credentials=credentials,
+		# filters=filters,
+		cookies = '/home/t/atest/scrappa/linkedin_cookie.jsonl',
+		# max_depth=2,  # Scrape first 2 pages
+		block_media=True,
+		headless=False  # Set to True in production
+		)
+
+		# Save results
+		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+		for i, res in enumerate(results):
+		# Create directory for saved content
+			save_dir = Path(f"./saved_content/linkedin_{timestamp}")
+			save_dir.mkdir(parents=True, exist_ok=True)
+
+			# Save each response as a separate JSON file
+			file_path = save_dir / f"linkedin_job_page_{i}.json"
+
+			with open(file_path, "w", encoding="utf-8") as f:
+				json.dump(res.model_dump(), f, indent=2, ensure_ascii=False)
+
+			print(f"Saved results to {file_path}")
+
+			print(f"Successfully scraped {len(results)} pages")
+
+	except Exception as e:
+		print(f"Error during scraping: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
