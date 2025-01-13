@@ -15,23 +15,17 @@ def save_json(json_object: dict | list[dict], filename:str):
     filename:Path = Path(filename)
     filename.parent.mkdir(parents=True, exist_ok=True)
 
-    try:
-        # Handle JSON saving
-        if isinstance(json_object, dict):
-            with open(filename, 'w') as f:
-                json.dump(json_object, f, indent=4)
-        # Handle JSONL saving
-        elif isinstance(json_object, list) and all(isinstance(item, dict) for item in json_object):
-            with open(filename, 'w') as f:
-                jj = json_object
-                f.write(json.dumps(jj, indent=4) + '\n')
-        else:
-            raise ValueError("Input must be a dictionary or a list of dictionaries.")
+    if isinstance(json_object, dict):
+        with open(filename, 'w') as f:
+            json.dump(json_object, f, indent=4)
+    # Handle JSONL saving
+    elif isinstance(json_object, list) and all(isinstance(item, dict) for item in json_object):
+        with open(filename, 'w') as f:
+            jj = json_object
+            f.write(json.dumps(jj, indent=4) + '\n')
+    else:
+        raise ValueError("Input must be a dictionary or a list of dictionaries.")
 
-        print(f"File saved: {filename}")
-    except Exception as e:
-        print(f"Failed to save: {filename}")
-        print(e)
 
 
 def read_json(file: str) -> List[Dict]| Dict:
