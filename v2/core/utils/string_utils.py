@@ -23,9 +23,13 @@ def extract_integers(text):
     # Process matches to clean and convert them to integers
     cleaned_integers = []
     for match in matches:
-        # Remove non-numeric symbols (e.g., $ or % or commas) and convert to integer
-        cleaned_number = re.sub(r'[^\d-]', '', match)
+        # Remove non-numeric symbols (e.g., $ or % or commas)
+        cleaned_number = re.sub(r'[^\d.-]', '', match)
         
+        #check if decimal number
+        if "." in cleaned_number:
+          cleaned_number=cleaned_number.split(".")[0]
+
         # Append the cleaned integer to the result list
         if cleaned_number:
             cleaned_integers.append(int(cleaned_number))
@@ -51,7 +55,8 @@ def extract_links_from_string(html_content: str, regex: str = None) -> list[str]
                 links.append(href)
 
     except Exception as e:
-        raise Exception(f"An error occurred while processing the HTML content: {e}")
+       raise Exception(f"An error occurred while processing the HTML content: {e}")
+
 
     return links
 def clean_html(content:str)->str:
