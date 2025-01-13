@@ -126,7 +126,7 @@ def clean_html(html_str, elements_to_remove: list[str] = None):
     for tag in soup.find_all(True):
         if 'class' in tag.attrs and any(cls in tag['class'] for cls in elements_to_remove or []):
             tag.extract()
-        if 'id' in tag.attrs and tag['id'] in elements_to_remove:
+        if 'id' in tag.attrs and tag['id'] in (elements_to_remove or []):
             tag.extract()
 
     # Remove code tags
