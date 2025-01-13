@@ -21,8 +21,8 @@ class DummyData(BaseModel):
     
 class DummyPage(PageBase):
     """Dummy page that matches any url, and extract html and text"""
-    extraction_model = DummyData
-    extraction_strategy = LLMExtractionStrategyIMAGE(model = 'gemini/gemini-2.0-flash-exp', extraction_model=extraction_model)
+    extraction_model = None
+    extraction_strategy = None
     url_pattern = r"^https?://.*"  # Match any http or https URL
 
     async def page_action(self, page: Page):
@@ -33,7 +33,7 @@ class DummyWebsitePlatform(WebsitePlatform):
     name = 'Dummy'
     base_url = 'https://example.com'
     login_url = 'https://example.com/login/'
-    pages = [DummyPage()]
+    pages = []
 
     async def login(self, page: Page, credentials: Dict[str, str]) -> None:
         """Dummy login action - does nothing."""
