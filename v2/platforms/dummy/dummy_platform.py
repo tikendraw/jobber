@@ -1,13 +1,10 @@
 # platforms/dummy_platform.py
-import re
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Dict
 
 from playwright.async_api import Page
 from pydantic import BaseModel
 
-from v2.core.extraction import LLMExtractionStrategyIMAGE
-from v2.core.page_output import PageResponse, parse_page_response
+from v2.core.page_output import parse_page_response
 from v2.platforms.action_utils import scroll_to_element
 from v2.platforms.base_platform import PageBase, WebsitePlatform
 
@@ -26,10 +23,10 @@ class DummyPage(PageBase):
     url_pattern = r"^https?://.*"  # Match any http or https URL
 
     async def page_action(self, page: Page):
-        await scroll_to_element(page, scroll_to_end=True)
+        await scroll_to_element(page, scroll_to_end=True, step_size=300, delay_ms=1)
 
 
-class DummyWebsitePlatform(WebsitePlatform):
+class DummyPlatform(WebsitePlatform):
     name = 'Dummy'
     base_url = 'https://example.com'
     login_url = 'https://example.com/login/'
