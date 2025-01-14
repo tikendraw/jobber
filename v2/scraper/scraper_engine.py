@@ -1,15 +1,14 @@
 # scraper/scraper_engine.py
 from asyncio import Semaphore, gather
-from typing import Any, AsyncIterable, Callable, Dict, List, Optional, TypeVar
+from typing import Dict, List
 
 from playwright.async_api import BrowserContext, Page, Request, Route, async_playwright
 
-from v2.config.parameters import ParametersConfig, get_parameters_config
-from v2.core.extraction.extraction import ExtractionStrategyBase
 from v2.core.page_output import PageResponse, parse_page_response
-from v2.core.utils.file_utils import save_json
 from v2.infrastructure.logging.logger import get_logger
-from v2.platforms.base_platform import PageBase, WebsitePlatform
+from v2.platforms.base_platform import WebsitePlatform
+
+from .scraper_utils import read_cookies, save_cookies
 
 logger = get_logger(__name__)
 
@@ -63,7 +62,6 @@ class ScraperEngine:
                 except Exception as e:
                     logger.error(f"Error while in search action: {e}", exc_info=True)
 
-                 
             if filters:
                 try:
                     await self.platform.apply_filters(page, filters=filters)
@@ -86,8 +84,8 @@ class ScraperEngine:
             results = await self._extract_data(results)
             logger.debug(f'Extracted data...{len(results)}')
 
-
-            await save_cookies(context=context, cookie_file=cookie_file)
+            content = await context.cookies()
+            await save_cookies(content=content, cookie_file=cookie_file)
             await page.close()
             await context.close()
             await browser.close()
@@ -157,29 +155,3 @@ class ScraperEngine:
         extraction_tasks = [extract_single(response) for response in page_responses]
         results = await gather(*extraction_tasks)
         return [r for r in results if r]
-
-T = TypeVar('T')
-async def list_to_async_iterator(responses:List[T]) -> AsyncIterable[T]:
-    for page_response in responses:
-        yield page_response
-
-async def read_cookies(cookie_file: str):
-    import json
-    try:
-        with open(cookie_file, 'r') as f:
-            data = json.load(f)
-            logger.debug(f'Read cookies from {cookie_file} count: {len(data)}')
-            return data
-    except Exception as e:
-        logger.error(f'Error while reading cookie: {e}')
-        return None
-
-async def save_cookies(context: BrowserContext, cookie_file: str):
-    try:
-        cookies = await context.cookies()
-        import json
-        with open(cookie_file, 'w') as f:
-            json.dump(cookies, f, indent=4)
-        logger.debug(f"Cookies saved successfully to {cookie_file}.")
-    except Exception as e:
-        logger.error(f"Error while saving cookies: {e}")
