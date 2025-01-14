@@ -67,10 +67,53 @@ class ExtractionMapping(BaseModel):
 
 
 class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
+    """
+     Extraction strategy that uses BeautifulSoup for HTML parsing.
+     
+     This class implements `ExtractionStrategyBase` and utilizes `BeautifulSoup`
+     to extract data from HTML content based on the provided `ExtractionMapping`.
+
+    Example:
+        ```python
+        html_content = "<html><body><h1 class='title'>My Title</h1></body></html>"
+        mapping = ExtractionMapping(extraction_configs={"title": FieldConfig(selector=".title")})
+        strategy = BeautifulSoupExtractionStrategy(mapping)
+        page_response = PageResponse(html=html_content)
+        extracted_response = strategy.extract(page_response)
+        print(extracted_response.extracted_data) # Output: {'title': 'My Title'}
+        ```
+    """
     def __init__(self, extraction_mapping: ExtractionMapping):
+        """
+        Initializes the extraction strategy with the given extraction mapping.
+        
+        Args:
+            extraction_mapping (ExtractionMapping): The configuration for data extraction.
+        """
         self.extraction_mapping = extraction_mapping
 
     def extract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
+        """
+        Extracts data from a PageResponse object using BeautifulSoup.
+        
+        Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+            PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+
+        Example:
+            ```python
+             html_content = "<html><body><div class='container'><span class='item'>Item 1</span><span class='item'>Item 2</span></div></body></html>"
+             mapping = ExtractionMapping(
+                extraction_configs={"items": FieldConfig(selector=".item", multiple=True)}
+                )
+             strategy = BeautifulSoupExtractionStrategy(mapping)
+             page_response = PageResponse(html=html_content)
+             extracted_response = strategy.extract(page_response)
+             print(extracted_response.extracted_data) # Output: {'items': ['Item 1', 'Item 2']}
+            ```
+        """
         if not page_response.html:
             page_response.extracted_data = None
             return page_response
@@ -81,9 +124,46 @@ class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
         return page_response
 
     async def aextract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
+        """
+         Asynchronously extracts data from a PageResponse. Calls the synchronous `extract` method.
+         
+         Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+             PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+        """
         return self.extract(page_response, *args, **kwargs)
 
     def _extract_data(self, tree: BeautifulSoup, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
+        """
+        Recursively extracts data based on the extraction configs.
+        
+        Args:
+            tree (BeautifulSoup): The BeautifulSoup tree to extract data from.
+            extraction_configs (Dict[str, FieldConfig]): Configuration for data extraction
+            
+        Returns:
+            Dict[str, Any]: A dictionary containing the extracted data.
+
+        Example:
+            ```python
+            html_content = "<html><body><div class='container'><h2 class='title'>Product</h2><span class='price'>19.99</span></div></body></html>"
+            tree = BeautifulSoup(html_content, 'html.parser')
+            config = {
+               "product_details": FieldConfig(
+                  selector=".container",
+                  sub_fields={
+                        "title": FieldConfig(selector=".title"),
+                        "price": FieldConfig(selector=".price"),
+                  }
+               )
+            }
+            strategy = BeautifulSoupExtractionStrategy(extraction_mapping=ExtractionMapping(extraction_configs={}))
+            extracted_data = strategy._extract_data(tree,config)
+            print(extracted_data)  # Output: {'product_details': {'title': 'Product', 'price': '19.99'}}
+           ```
+        """
         output_data = {}
 
         for field_name, config in extraction_configs.items():
@@ -127,10 +207,53 @@ class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
         return output_data
 
 class LXMLExtractionStrategy(ExtractionStrategyBase):
+    """
+    Extraction strategy that uses lxml for HTML parsing, supports both CSS selectors and XPath.
+    
+    This class implements `ExtractionStrategyBase` and utilizes `lxml`
+    to extract data from HTML content based on the provided `ExtractionMapping`.
+
+    Example:
+       ```python
+        html_content = "<html><body><h1 class='title'>My Title</h1></body></html>"
+        mapping = ExtractionMapping(extraction_configs={"title": FieldConfig(selector="//h1[@class='title']")})
+        strategy = LXMLExtractionStrategy(mapping)
+        page_response = PageResponse(html=html_content)
+        extracted_response = strategy.extract(page_response)
+        print(extracted_response.extracted_data) # Output: {'title': 'My Title'}
+        ```
+    """
     def __init__(self, extraction_mapping: ExtractionMapping):
+        """
+        Initializes the extraction strategy with the given extraction mapping.
+        
+        Args:
+            extraction_mapping (ExtractionMapping): The configuration for data extraction.
+        """
         self.extraction_mapping = extraction_mapping
 
     def extract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
+        """
+        Extracts data from a PageResponse object using lxml.
+        
+        Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+            PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+
+        Example:
+            ```python
+            html_content = "<html><body><div class='container'><span class='item'>Item 1</span><span class='item'>Item 2</span></div></body></html>"
+            mapping = ExtractionMapping(
+              extraction_configs={"items": FieldConfig(selector="//span[@class='item']", multiple=True)}
+             )
+            strategy = LXMLExtractionStrategy(mapping)
+            page_response = PageResponse(html=html_content)
+            extracted_response = strategy.extract(page_response)
+            print(extracted_response.extracted_data) # Output: {'items': ['Item 1', 'Item 2']}
+            ```
+        """
         if not page_response.html:
             page_response.extracted_data = None
             return page_response
@@ -141,9 +264,46 @@ class LXMLExtractionStrategy(ExtractionStrategyBase):
         return page_response
 
     async def aextract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
+        """
+         Asynchronously extracts data from a PageResponse. Calls the synchronous `extract` method.
+         
+         Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+             PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+        """
         return self.extract(page_response, *args, **kwargs)
 
     def _extract_data(self, tree: html.HtmlElement, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
+        """
+        Recursively extracts data based on the extraction configs.
+        
+        Args:
+            tree (html.HtmlElement): The lxml HTML element to extract data from.
+            extraction_configs (Dict[str, FieldConfig]): Configuration for data extraction
+            
+        Returns:
+            Dict[str, Any]: A dictionary containing the extracted data.
+        
+        Example:
+            ```python
+            html_content = "<html><body><div class='container'><h2 class='title'>Product</h2><span class='price'>19.99</span></div></body></html>"
+            tree = html.fromstring(html_content)
+            config = {
+                "product_details": FieldConfig(
+                  selector="//div[@class='container']",
+                  sub_fields={
+                        "title": FieldConfig(selector=".//h2[@class='title']"),
+                        "price": FieldConfig(selector=".//span[@class='price']"),
+                  }
+                )
+            }
+            strategy = LXMLExtractionStrategy(extraction_mapping=ExtractionMapping(extraction_configs={}))
+            extracted_data = strategy._extract_data(tree,config)
+            print(extracted_data) # Output: {'product_details': {'title': 'Product', 'price': '19.99'}}
+            ```
+        """
         output_data = {}
 
         for field_name, config in extraction_configs.items():
@@ -197,12 +357,20 @@ def extract_with_strategy(
     Helper function to extract data using specified parser strategy.
     
     Args:
-        html_content: The HTML content to parse
-        extraction_mapping: The extraction configuration
-        parser_type: The type of parser to use
+        html_content (str): The HTML content to parse.
+        extraction_mapping (ExtractionMapping): The extraction configuration.
+        parser_type (ParserType, optional): The type of parser to use. Defaults to ParserType.SELECTOLAX.
         
     Returns:
-        Extracted data as dictionary
+        Dict[str, Any]: Extracted data as dictionary.
+
+    Example:
+       ```python
+        html_content = "<html><body><h1 class='title'>My Title</h1></body></html>"
+        mapping = ExtractionMapping(extraction_configs={"title": FieldConfig(selector=".title")})
+        extracted_data = extract_with_strategy(html_content, mapping, ParserType.SELECTOLAX)
+        print(extracted_data) # Output: {'title': 'My Title'}
+       ```
     """
     page_response = PageResponse(html=html_content)
     strategy = ExtractionStrategyFactory.create_strategy(parser_type, extraction_mapping)
@@ -211,11 +379,52 @@ def extract_with_strategy(
 
 
 class CSSExtractionStrategy:
+    """
+    Extraction strategy that uses Selectolax for HTML parsing, specifically for CSS selectors.
+    
+    This class implements `ExtractionStrategyBase` and utilizes `selectolax`
+    to extract data from HTML content based on the provided `ExtractionMapping`.
+
+    Example:
+        ```python
+        html_content = "<html><body><h1 class='title'>My Title</h1></body></html>"
+        mapping = ExtractionMapping(extraction_configs={"title": FieldConfig(selector=".title")})
+        strategy = CSSExtractionStrategy(mapping)
+        page_response = PageResponse(html=html_content)
+        extracted_response = strategy.extract(page_response)
+        print(extracted_response.extracted_data) # Output: {'title': 'My Title'}
+        ```
+    """
     def __init__(self, extraction_mapping: ExtractionMapping):
+        """
+        Initializes the extraction strategy with the given extraction mapping.
+        
+        Args:
+            extraction_mapping (ExtractionMapping): The configuration for data extraction.
+        """
         self.extraction_mapping = extraction_mapping
 
     def extract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
-        """Extracts data from page response using CSS selectors."""
+        """Extracts data from page response using CSS selectors.
+        
+        Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+            PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+        
+        Example:
+            ```python
+            html_content = "<html><body><div class='container'><span class='item'>Item 1</span><span class='item'>Item 2</span></div></body></html>"
+            mapping = ExtractionMapping(
+               extraction_configs={"items": FieldConfig(selector=".item", multiple=True)}
+               )
+            strategy = CSSExtractionStrategy(mapping)
+            page_response = PageResponse(html=html_content)
+            extracted_response = strategy.extract(page_response)
+            print(extracted_response.extracted_data) # Output: {'items': ['Item 1', 'Item 2']}
+            ```
+        """
         if not page_response.html:
             page_response.extracted_data = None
             return page_response
@@ -226,10 +435,45 @@ class CSSExtractionStrategy:
         return page_response
 
     async def aextract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
+        """
+         Asynchronously extracts data from a PageResponse. Calls the synchronous `extract` method.
+         
+         Args:
+            page_response (PageResponse): The PageResponse object containing the HTML to parse.
+            
+        Returns:
+             PageResponse: The same PageResponse object, but with the `extracted_data` field populated.
+        """
         return self.extract(page_response, *args, **kwargs)
 
     def _extract_data(self, tree: HTMLParser, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
-        """Recursively extracts data based on the extraction configs."""
+        """Recursively extracts data based on the extraction configs.
+        
+        Args:
+            tree (HTMLParser): The selectolax HTML parser tree to extract data from.
+            extraction_configs (Dict[str, FieldConfig]): Configuration for data extraction
+            
+        Returns:
+             Dict[str, Any]: A dictionary containing the extracted data.
+
+        Example:
+            ```python
+            html_content = "<html><body><div class='container'><h2 class='title'>Product</h2><span class='price'>19.99</span></div></body></html>"
+            tree = HTMLParser(html_content)
+            config = {
+                "product_details": FieldConfig(
+                    selector=".container",
+                   sub_fields={
+                       "title": FieldConfig(selector=".title"),
+                       "price": FieldConfig(selector=".price"),
+                    }
+                )
+            }
+            strategy = CSSExtractionStrategy(extraction_mapping=ExtractionMapping(extraction_configs={}))
+            extracted_data = strategy._extract_data(tree,config)
+            print(extracted_data) # Output: {'product_details': {'title': 'Product', 'price': '19.99'}}
+            ```
+        """
         output_data = {}
 
         for field_name, config in extraction_configs.items():
@@ -274,11 +518,18 @@ class CSSExtractionStrategy:
 
 
 class ExtractionStrategyFactory:
+    """
+    Factory class for creating extraction strategies based on the parser type.
+    
+    This class manages the available extraction strategies and creates an instance 
+    of the appropriate strategy based on the specified `ParserType`.
+    """
     _strategies: Dict[ParserType, Type[ExtractionStrategyBase]] = {
         ParserType.SELECTOLAX: CSSExtractionStrategy,
         ParserType.BEAUTIFUL_SOUP: BeautifulSoupExtractionStrategy,
         ParserType.LXML: LXMLExtractionStrategy,
     }
+    
 
     @classmethod
     def create_strategy(
@@ -290,14 +541,29 @@ class ExtractionStrategyFactory:
         Factory method to create an extraction strategy based on parser type.
         
         Args:
-            parser_type: The type of parser to use
-            extraction_mapping: The extraction configuration
+            parser_type (ParserType): The type of parser to use.
+            extraction_mapping (ExtractionMapping): The extraction configuration.
             
         Returns:
-            An instance of the appropriate extraction strategy
+            ExtractionStrategyBase: An instance of the appropriate extraction strategy.
         
         Raises:
-            ValueError: If parser_type is not supported
+            ValueError: If parser_type is not supported.
+            
+        Example:
+            ```python
+            mapping = ExtractionMapping(extraction_configs={"title": FieldConfig(selector=".title")})
+            strategy = ExtractionStrategyFactory.create_strategy(ParserType.SELECTOLAX, mapping)
+            print(isinstance(strategy, CSSExtractionStrategy)) # Output: True
+
+            strategy = ExtractionStrategyFactory.create_strategy(ParserType.BEAUTIFUL_SOUP, mapping)
+            print(isinstance(strategy, BeautifulSoupExtractionStrategy))  # Output: True
+
+            try:
+                ExtractionStrategyFactory.create_strategy("invalid_parser_type", mapping)
+            except ValueError as e:
+                print(e) # Output: Unsupported parser type: invalid_parser_type
+            ```
         """
         strategy_class = cls._strategies.get(parser_type)
         if not strategy_class:
