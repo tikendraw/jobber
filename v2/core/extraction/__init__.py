@@ -1,4 +1,5 @@
 # core/extraction/__init__.py
+from .css_extraction import CSSExtractionStrategy, ExtractionConfig, ExtractionMapping
 from .extraction import (
     ExtractionStrategyBase,
     LLMExtractionStrategyHTML,
@@ -9,6 +10,12 @@ from .extraction import (
 __all__ = [
     'ExtractionStrategyBase',
     'LLMExtractionStrategyHTML',
+    'ExtractionMapping',
+    'ExtractionConfig',
+
     'LLMExtractionStrategyIMAGE',
-    'LLMExtractionStrategyMultiSource'
+    'ExtractionConfig',
+    'LLMExtractionStrategyMultiSource',
+    'CSSExtractionStrategy',
+
 ]
