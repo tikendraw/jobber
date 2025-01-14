@@ -20,8 +20,37 @@ logger = get_logger(__name__)
 
 
 
+
+class FieldConfig(BaseModel):
+    selector: Optional[str] = None
+    multiple: bool = False
+    sub_fields: Optional[Dict[str, "FieldConfig"]] = None  # Use forward reference
+    extract_type: Optional[Literal["text","attribute"]] = "text"
+    attribute_name: Optional[str] = None
+    
+    @field_validator("attribute_name")
+    def check_attribute_name(cls, value, values):
+        if values.data.get("extract_type") == "attribute" and not value:
+            raise ValueError("attribute_name is required when extract_type is attribute")
+        return value
+    
+    # @field_validator("sub_fields")
+    # def check_subfields(cls, value, values):
+    #   if value and values.data.get("multiple", False) is False:
+    #     raise ValueError("Sub fields are only allowed with multiple=True")
+    #   return value
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FieldConfig":
+        """Parses a dictionary into a FieldConfig instance."""
+        sub_fields_data = data.get("sub_fields")
+        if sub_fields_data:
+            data["sub_fields"] = {
+                k: FieldConfig.from_dict(v) for k, v in sub_fields_data.items()
+            }
+        return cls(**data)
+
 class CSSExtractionStrategy:
-    def __init__(self, extraction_map: Dict[str, Dict[str, Any]]):
+    def __init__(self, extraction_map: Dict[str, FieldConfig]):
         self.extraction_map = extraction_map
 
     def extract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
@@ -38,17 +67,17 @@ class CSSExtractionStrategy:
          return self.extract(page_response, *args, **kwargs)
 
 
-    def _extract_data(self, tree: HTMLParser, extraction_map: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_data(self, tree: HTMLParser, extraction_map: Dict[str, FieldConfig]) -> Dict[str, Any]:
         """Recursively extracts data based on the extraction map."""
         output_data = {}
 
         for field_name, config in extraction_map.items():
            
-            selector = config.get("selector")
-            multiple = config.get("multiple", False)
-            sub_fields = config.get("sub_fields")
-            extract_type = config.get("extract_type")
-            attribute_name = config.get("attribute_name")
+            selector = config.selector
+            multiple = config.multiple
+            sub_fields = config.sub_fields
+            extract_type = config.extract_type
+            attribute_name = config.attribute_name
 
 
             if selector:
