@@ -15,12 +15,10 @@ logger = get_logger(__name__)
 
 
 class ExtractionStrategyBase(Protocol):
-    @abstractmethod
     def extract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
         """Extracts data from page response and sets it to page_response.extracted_data."""
         pass
     
-    @abstractmethod
     async def aextract(self, page_response: PageResponse, *args, **kwargs) -> PageResponse:
         """Async extracts data from page response and sets it to page_response.extracted_data."""
         pass
