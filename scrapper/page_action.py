@@ -144,46 +144,12 @@ async def expand_buttons_by_selector(page: Page, selector: str):
         print(f"An error occurred while expanding buttons: {e}")
 
 
-
-# async def scroll_to_element(page: Page, selector: str = None, scroll_to_end: bool = False)->None:
-#     """
-#     Scrolls to a specific element or to the bottom of the page using Playwright.
-
-#     Args:
-#         page (Page): The Playwright page instance to operate on.
-#         selector (str, optional): The CSS selector of the element to scroll to. Defaults to None.
-#         scroll_to_end (bool, optional): If True, scrolls to the bottom of the page. Defaults to False.
-#     """
-#     if scroll_to_end:
-#         # Retrieve the current scroll height of the page
-#         previous_height = await page.evaluate("document.body.scrollHeight")
-
-#         while True:
-#             # Scroll down to the bottom of the page
-#             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-
-#             # Wait for the page to load more content if applicable
-#             await page.wait_for_timeout(1000)  # Wait 1 second
-
-#             # Get the new scroll height after scrolling
-#             new_height = await page.evaluate("document.body.scrollHeight")
-
-#             # Break the loop if the scroll height hasn't changed
-#             if new_height == previous_height:
-#                 break
-
-#             previous_height = new_height
-#     elif selector:
-#         # Scroll to the specified element
-#         await page.locator(selector).scroll_into_view_if_needed()
-#     else:
-#         raise ValueError("Either a selector must be provided or scroll_to_end must be True.")
 async def scroll_to_element(
     page: Page,
     selector: str = None,
     scroll_to_end: bool = False,
-    step_size: int = 100,
-    delay_ms: int = 200,
+    step_size: int = 300,
+    delay_ms: int = 1,
     max_attempts: int = 50  # Maximum number of scroll attempts to prevent infinite loops
 ) -> None:
     """
