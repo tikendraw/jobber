@@ -1,36 +1,37 @@
 import json
+from asyncio import selector_events
 from pathlib import Path
+from typing import List
+
+from pydantic import Field
 
 from scrapper.utils import extract_links_from_string
+from v2.core.extraction import (
+    BeautifulSoupExtractionStrategy,
+    CSSExtractionStrategy,
+    ExtractionConfig,
+    ExtractionMapping,
+    FieldConfig,
+    LLMExtractionStrategyHTML,
+    LLMExtractionStrategyMultiSource,
+)
+from v2.core.page_output import PageResponse
 
-filename = '/home/t/atest/use_computer/saved_content/2025-01-09 15:21:30.447752/page_response-2025-01-09 15:21:30.448721.json'
+filename = '/home/t/atest/scrappa/saved_content/linkedin_20250114_213608/linkedin_job_page_0.json'
 
 
 with open(filename, 'r') as f:
     file = json.load(f)
 
-html = file['html']
+pr = PageResponse(**file)
+print(pr.url)
+print(pr.extracted_data)
 
-links = extract_links_from_string(html, '\/jobs/view\/\d+\/?.*')
 
-print(links)
 
-sp = [x.split('/') for x in links]
+start = CSSExtractionStrategy(mapp)
 
-for x in sp:
-    for i,j in enumerate(x):
-        print(i, ':', j)
-        
+a = start.extract(pr)
+from pprint import pprint
 
-html = file['clean_html2']
-
-links = extract_links_from_string(html, '\/jobs/view\/\d+\/?.*')
-
-print(links)
-
-sp = [x.split('/') for x in links]
-
-for x in sp:
-    for i,j in enumerate(x):
-        print(i, ':', j)
-        
+pprint(a.extracted_data, indent=4)
