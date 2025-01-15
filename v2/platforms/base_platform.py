@@ -38,12 +38,12 @@ class WebsitePlatform(ABC):
 
     @abstractmethod
     async def login(self, page: Page, credentials: Dict[str, str]) -> None:
-        """Logs in to the website, imitate your login action as you are in a login page"""
+        """Logs in to the website, imitate your login action as you are in a login page, you are in login page, now what will you do?"""
         pass
 
     @abstractmethod
     async def search_action(self, page: Page, search_params: Dict[str, str]) -> None:
-        """Navigates to search page with the params given, implement search action"""
+        """Navigates to search page with the params given, implement search action, something like, click on search icon then type ,then press enter """
         pass
 
     @abstractmethod
