@@ -7,6 +7,7 @@ from .css_extraction import (
     ExtractionStrategyFactory,
     LXMLExtractionStrategy,
     ParserType,
+    FieldConfig,
     extract_with_strategy,
 )
 from .extraction import (
@@ -22,6 +23,7 @@ __all__ = [
     'ExtractionMapping',
     'ExtractionConfig',
     'LXMLExtractionStrategy',
+    'FieldConfig',
     'BeautifulSoupExtractionStrategy',
     'ExtractionStrategyFactory',
     'ParserType',
