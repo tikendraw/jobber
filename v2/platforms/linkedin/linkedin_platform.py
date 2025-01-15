@@ -5,10 +5,12 @@ from typing import Any, Dict, List, Optional
 from playwright.async_api import Page
 
 from scrapper.page_action import scroll_to_element
+from v2.core.extraction.css_extraction import CSSExtractionStrategy
 from v2.core.page_output import PageResponse, parse_page_response
 from v2.infrastructure.logging.logger import get_logger
 from v2.platforms.action_utils import expand_all_buttons, scroll_container
 from v2.platforms.base_platform import PageBase, WebsitePlatform
+from .linkedin_extraction import get_job_description_mapping, get_job_listings_mapping
 from v2.platforms.linkedin.linkedin_objects import (
     Company,
     HiringTeam,
@@ -26,7 +28,7 @@ job_detail_container = "#main > div > div.scaffold-layout__list-detail-inner.sca
 class LinkedInJobListPage(PageBase):
     url_pattern = r"linkedin\.com/jobs/search/.*"
     extraction_model = JobListing
-
+    extraction_strategy=CSSExtractionStrategy(extraction_mapping=get_job_listings_mapping())
     async def page_action(self, page: Page):
         """Handle actions for job listing page"""
         scroll_jobs_list = partial(scroll_container, container_selector=job_list_container)
@@ -42,6 +44,7 @@ class LinkedInJobListPage(PageBase):
 class LinkedInJobDetailPage(PageBase):
     url_pattern = r"linkedin\.com/jobs/view/.*"
     extraction_model = JobDescription
+    extraction_strategy=CSSExtractionStrategy(extraction_mapping=get_job_description_mapping())
 
     async def page_action(self, page: Page):
         """Handle actions for job detail page"""
