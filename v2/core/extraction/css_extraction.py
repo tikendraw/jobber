@@ -28,7 +28,7 @@ class FieldConfig(BaseModel):
     selector: Optional[str] = None
     multiple: bool = False
     sub_fields: Optional[Dict[str, "FieldConfig"]] = None
-    extract_type: Optional[Literal["text", "attribute"]] = "text"
+    extract_type: Optional[Literal["text", "inner_text", "attribute"]] = "text"
     attribute_name: Optional[str] = None
     
     @field_validator("attribute_name")
@@ -95,10 +95,19 @@ class TextExtractionMixin:
         Returns:
             str: Extracted text from the node
         """
+        # Try getting direct text first
         text = self._get_direct_text(node)
+        
+        # If no text found and node has children, combine text from all children
         if not text and self._has_children(node):
-            text = " ".join([self._get_direct_text(child) for child in self._get_child_nodes(node)])
-        return text
+            child_texts = []
+            for child in self._get_child_nodes(node):
+                child_text = self._get_direct_text(child)
+                if child_text:
+                    child_texts.append(child_text)
+            text = " ".join(child_texts)
+        
+        return text.strip()
 
 
 class BeautifulSoupExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
@@ -171,8 +180,16 @@ class BeautifulSoupExtractionStrategy(TextExtractionMixin, ExtractionStrategyBas
         return self.extract(page_response, *args, **kwargs)
 
     def _get_direct_text(self, node: BeautifulSoup) -> str:
+        """Get direct text from current node only."""
+        # BeautifulSoup doesn't have a direct way to get only immediate text
+        # So we'll get all text from direct children that are NavigableString
+        return " ".join(child.strip() for child in node.children 
+                       if isinstance(child, str) and child.strip())
+    
+    def _get_inner_text(self, node: BeautifulSoup) -> str:
+        """Get all text from node and its descendants."""
         return node.get_text(strip=True, separator=" ")
-        
+
     def _has_children(self, node: BeautifulSoup) -> bool:
         return bool(node.find_all())
         
@@ -228,11 +245,15 @@ class BeautifulSoupExtractionStrategy(TextExtractionMixin, ExtractionStrategyBas
                     extracted_values = []
                     for node in nodes:
                         if sub_fields:
+                            sub_tree = node
                             extracted_values.append(self._extract_data(node, sub_fields))
                         elif extract_type == "attribute":
                             extracted_values.append(node.get(attribute_name))
-                        else:
-                            text = self._extract_text_from_node(node)
+                        elif extract_type == "inner_text":
+                            text = self._get_inner_text(node)
+                            extracted_values.append(text)
+                        else:  # "text"
+                            text = self._get_direct_text(node)
                             extracted_values.append(text)
                     
                     output_data[field_name] = extracted_values
@@ -240,16 +261,31 @@ class BeautifulSoupExtractionStrategy(TextExtractionMixin, ExtractionStrategyBas
                 else:
                     node = nodes[0]
                     if sub_fields:
+                        sub_tree = node
                         output_data[field_name] = self._extract_data(node, sub_fields)
                     elif extract_type == "attribute":
                         output_data[field_name] = node.get(attribute_name)
-                    else:
-                        output_data[field_name] = self._extract_text_from_node(node)
-
+                    elif extract_type == "inner_text":
+                        output_data[field_name] = self._get_inner_text(node)
+                    else:  # "text"
+                        output_data[field_name] = self._get_direct_text(node)
+            
             else:
                 output_data[field_name] = None
 
         return output_data
+
+    def _extract_text_from_node(self, node: Any) -> str:
+        """
+        Extract all text from a node and its descendants.
+        
+        Args:
+            node: The node to extract text from
+            
+        Returns:
+            str: All text from the node and its descendants
+        """
+        return self._get_direct_text(node)
 
 class LXMLExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
     """
@@ -321,8 +357,13 @@ class LXMLExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
         return self.extract(page_response, *args, **kwargs)
 
     def _get_direct_text(self, node: html.HtmlElement) -> str:
+        """Get direct text from current node only."""
+        return "".join(node.xpath("./text()")).strip()
+    
+    def _get_inner_text(self, node: html.HtmlElement) -> str:
+        """Get all text from node and its descendants."""
         return " ".join(node.text_content().split())
-        
+
     def _has_children(self, node: html.HtmlElement) -> bool:
         return bool(len(node))
         
@@ -378,6 +419,7 @@ class LXMLExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
                     extracted_values = []
                     for node in nodes:
                         if sub_fields:
+                            sub_tree = node
                             extracted_values.append(self._extract_data(node, sub_fields))
                         elif extract_type == "attribute":
                             extracted_values.append(node.get(attribute_name))
@@ -501,8 +543,13 @@ class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
         return self.extract(page_response, *args, **kwargs)
 
     def _get_direct_text(self, node: HTMLParser) -> str:
-        return node.text(deep=True, separator=" ", strip=True)
-        
+        """Get direct text from current node only."""
+        return node.text(deep=False, strip=True)
+    
+    def _get_inner_text(self, node: HTMLParser) -> str:
+        """Get all text from node and its descendants."""
+        return node.text(deep=True, strip=True)
+
     def _has_children(self, node: HTMLParser) -> bool:
         return bool(node.css('*'))
         
@@ -548,7 +595,7 @@ class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
 
             if selector:
                 nodes = tree.css(selector)
-               
+                
                 if not nodes:
                     output_data[field_name] = None
                     continue
@@ -557,29 +604,47 @@ class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
                     extracted_values = []
                     for node in nodes:
                         if sub_fields:
-                            extracted_values.append(self._extract_data(node, sub_fields))
+                            sub_tree = node
+                            extracted_values.append(self._extract_data(sub_tree, sub_fields))
                         elif extract_type == "attribute":
                             extracted_values.append(node.attributes.get(attribute_name))
-                        else:
-                            text = self._extract_text_from_node(node)
+                        elif extract_type == "inner_text":
+                            text = self._get_inner_text(node)
                             extracted_values.append(text)
-                        
-                    output_data[field_name] = extracted_values
+                        else:  # "text"
+                            text = self._get_direct_text(node)
+                            extracted_values.append(text)
                     
+                    output_data[field_name] = extracted_values
+                
                 else:
                     node = nodes[0]
                     if sub_fields:
+                        sub_tree = node
                         output_data[field_name] = self._extract_data(node, sub_fields)
                     elif extract_type == "attribute":
-                        output_data[field_name] = node.attributes.get(attribute_name)
-                    else:
-                        output_data[field_name] = self._extract_text_from_node(node)
+                        output_data[field_name] = node.get(attribute_name)
+                    elif extract_type == "inner_text":
+                        output_data[field_name] = self._get_inner_text(node)
+                    else:  # "text"
+                        output_data[field_name] = self._get_direct_text(node)
             
             else:
                 output_data[field_name] = None
 
         return output_data
 
+    def _extract_text_from_node(self, node: Any) -> str:
+        """
+        Extract all text from a node and its descendants.
+        
+        Args:
+            node: The node to extract text from
+            
+        Returns:
+            str: All text from the node and its descendants
+        """
+        return self._get_direct_text(node)
 
 class ExtractionStrategyFactory:
     """
