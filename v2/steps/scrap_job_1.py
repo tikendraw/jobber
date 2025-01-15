@@ -26,19 +26,19 @@ async def main():
 	    "password": os.environ['LINKEDIN_PASSWORD']
 	}
 
-	# # Test search parameters
-	# search_params = {
-	#     "keywords": "python developer"
-	# }
+	# Test search parameters
+	search_params = {
+	    "keywords": "Data science"
+	}
 
 
-	# # Test filters
-	# filters = {
-	#     "date_posted": "past_24_hours",
-	#     "experience_level": ["entry_level", "associate"],
-	#     "job_type": ["full_time"],
-	#     "remote": ["remote"]
-	# }
+	# Test filters
+	filters = {
+	    "date_posted": "past_24_hours",
+	    # "experience_level": ["entry_level", "associate"],
+	    # "job_type": ["full_time"],
+	    # "remote": ["remote"]
+	}
 
 	jobidss = [
 	# "4087346469","4091815560","4086292665","4091997736","4087347086","4091838136",
@@ -55,10 +55,10 @@ async def main():
 	try:
 		# Run the scraper
 		results = await engine.scrap(
- 		# search_params=search_params,
-		urls = job_urls,
+ 		search_params=search_params,
+		# urls = job_urls,
 		credentials=credentials,
-		# filters=filters,
+		filters=filters,
 		cookies = '/home/t/atest/scrappa/linkedin_cookie.jsonl',
 		# max_depth=2,  # Scrape first 2 pages
 		block_media=True,
