@@ -47,76 +47,46 @@ def get_job_description_mapping() -> ExtractionMapping:
     Creates extraction mapping for LinkedIn job description page
     """
     return ExtractionMapping(
-        extraction_configs={
-            "job_details": FieldConfig(
-                selector="div.job-view-layout.jobs-details",
-                sub_fields={
-                    "job_title": FieldConfig(
-                        selector="div.job-details-jobs-unified-top-card__job-title"
+    extraction_configs={
+        'main_div': FieldConfig(
+            selector='div.jobs-details',
+            sub_fields={
+                'top_card': FieldConfig(
+                    selector='div.relative',
+                    multiple=True,
+                    sub_fields={
+                        'company_name': FieldConfig(
+                            selector='div.job-details-jobs-unified-top-card__company-name a',
+                            extract_type="text"
+                        ),
+                        'job_title': FieldConfig(
+                            selector='div.job-details-jobs-unified-top-card__job-title',
+                            extract_type="inner_text"
+                        ),
+                        'location_and_stats': FieldConfig(
+                            selector='div.job-details-jobs-unified-top-card__primary-description-container',
+                            extract_type="inner_text"
+                        ),
+                        'job_preferences': FieldConfig(
+                            selector='button.job-details-preferences-and-skills span.ui-label',
+                            extract_type="inner_text"
+                        ),
+                    }
+                ),
+                'job_description': FieldConfig(
+                    selector='div.jobs-description',
+                    extract_type="inner_text"
+                ),
+                'salary_div': FieldConfig(
+                    selector='div.jobs-details__salary-main-rail-card',
+                    extract_type="inner_text"
+                ),
+                'about_company': FieldConfig(
+                    selector='section.jobs-company',
+                    extract_type="inner_text"
                     ),
-                    "job_status": FieldConfig(
-                        selector="div.post-apply-timeline:contains('Applied')"
-                    ),
-                    "location": FieldConfig(
-                        selector="span.jobs-unified-top-card__bullet"
-                    ),
-                    "posted_time": FieldConfig(
-                        selector="span.jobs-unified-top-card__subtitle-secondary"
-                    ),
-                    "job_description": FieldConfig(
-                        selector="article.jobs-description__container"
-                    ),
-                    "skill_match": FieldConfig(
-                        selector="div.job-details-how-you-match-card__skills-item-title"
-                    ),
-                    "skill_match_details": FieldConfig(
-                        selector="div.job-details-how-you-match-card__container"
-                    ),
-                    "salary_details": FieldConfig(
-                        selector="div.jobs-details__salary-main-rail-card"
-                    ),
-                    "company": FieldConfig(
-                        selector="div.jobs-company__box",
-                        sub_fields={
-                            "name": FieldConfig(
-                                selector="div.artdeco-entity-lockup__title"
-                            ),
-                            "profile_link": FieldConfig(
-                                selector="a.jobs-company__company-pages-url",
-                                extract_type="attribute",
-                                attribute_name="href"
-                            ),
-                            "about": FieldConfig(
-                                selector="div.jobs-company__company-description"
-                            ),
-                            "followers": FieldConfig(
-                                selector="div.artdeco-entity-lockup__subtitle"
-                            ),
-                            "industry": FieldConfig(
-                                selector="div.t-14.mt5"
-                            ),
-                            "employee_count": FieldConfig(
-                                selector="div.t-14.mt5:contains('employees')"
-                            )
-                        }
-                    ),
-                    "hiring_team": FieldConfig(
-                        selector="div.job-details-module div.hirer-card__hirer-information",
-                        multiple=True,
-                        sub_fields={
-                            "name": FieldConfig(
-                                selector="a[aria-label]",
-                                extract_type="attribute", 
-                                attribute_name="aria-label"
-                            ),
-                            "profile_link": FieldConfig(
-                                selector="a",
-                                extract_type="attribute",
-                                attribute_name="href"
-                            )
-                        }
-                    )
                 }
             )
         }
-    ) 
+    )
+
