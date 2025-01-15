@@ -59,17 +59,7 @@ class LinkedInPlatform(WebsitePlatform):
     base_url = "https://www.linkedin.com"
     login_url = "https://www.linkedin.com/login"
 
-    def __init__(self):
-        from v2.core.extraction import LLMExtractionStrategyMultiSource
-        
-        self.llm_model = "gemini/gemini-2.0-flash-exp"
-        self.extraction_strategy = LLMExtractionStrategyMultiSource(
-            model=self.llm_model,
-            extraction_model=JobDescription,
-            verbose=False,
-            validate_json=True,
-        )
-
+    def __init__(self):        
         # Initialize pages
         self.pages = [
             LinkedInJobListPage(),
