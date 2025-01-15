@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from enum import Enum
 from typing import (
     Any,
@@ -66,7 +67,41 @@ class ExtractionMapping(BaseModel):
 
 
 
-class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
+class TextExtractionMixin:
+    """Mixin class providing common text extraction functionality."""
+    
+    @abstractmethod
+    def _get_direct_text(self, node: Any) -> str:
+        """Get direct text from node without considering nested elements."""
+        pass
+        
+    @abstractmethod
+    def _has_children(self, node: Any) -> bool:
+        """Check if node has child elements."""
+        pass
+        
+    @abstractmethod
+    def _get_child_nodes(self, node: Any) -> list:
+        """Get list of child nodes."""
+        pass
+        
+    def _extract_text_from_node(self, node: Any) -> str:
+        """
+        Extract text from a node, including nested elements if direct text is empty.
+        
+        Args:
+            node: The node to extract text from
+            
+        Returns:
+            str: Extracted text from the node
+        """
+        text = self._get_direct_text(node)
+        if not text and self._has_children(node):
+            text = " ".join([self._get_direct_text(child) for child in self._get_child_nodes(node)])
+        return text
+
+
+class BeautifulSoupExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
     """
      Extraction strategy that uses BeautifulSoup for HTML parsing.
      
@@ -135,6 +170,15 @@ class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
         """
         return self.extract(page_response, *args, **kwargs)
 
+    def _get_direct_text(self, node: BeautifulSoup) -> str:
+        return node.get_text(strip=True, separator=" ")
+        
+    def _has_children(self, node: BeautifulSoup) -> bool:
+        return bool(node.find_all())
+        
+    def _get_child_nodes(self, node: BeautifulSoup) -> list:
+        return node.find_all()
+        
     def _extract_data(self, tree: BeautifulSoup, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
         """
         Recursively extracts data based on the extraction configs.
@@ -188,7 +232,8 @@ class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
                         elif extract_type == "attribute":
                             extracted_values.append(node.get(attribute_name))
                         else:
-                            extracted_values.append(node.get_text(strip=True, separator=" "))
+                            text = self._extract_text_from_node(node)
+                            extracted_values.append(text)
                     
                     output_data[field_name] = extracted_values
                 
@@ -199,14 +244,14 @@ class BeautifulSoupExtractionStrategy(ExtractionStrategyBase):
                     elif extract_type == "attribute":
                         output_data[field_name] = node.get(attribute_name)
                     else:
-                        output_data[field_name] = node.get_text(strip=True, separator=" ")
+                        output_data[field_name] = self._extract_text_from_node(node)
 
             else:
                 output_data[field_name] = None
 
         return output_data
 
-class LXMLExtractionStrategy(ExtractionStrategyBase):
+class LXMLExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
     """
     Extraction strategy that uses lxml for HTML parsing, supports both CSS selectors and XPath.
     
@@ -275,6 +320,15 @@ class LXMLExtractionStrategy(ExtractionStrategyBase):
         """
         return self.extract(page_response, *args, **kwargs)
 
+    def _get_direct_text(self, node: html.HtmlElement) -> str:
+        return " ".join(node.text_content().split())
+        
+    def _has_children(self, node: html.HtmlElement) -> bool:
+        return bool(len(node))
+        
+    def _get_child_nodes(self, node: html.HtmlElement) -> list:
+        return node.getchildren()
+        
     def _extract_data(self, tree: html.HtmlElement, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
         """
         Recursively extracts data based on the extraction configs.
@@ -314,7 +368,6 @@ class LXMLExtractionStrategy(ExtractionStrategyBase):
             attribute_name = config.attribute_name
 
             if selector:
-                # Convert CSS selector to XPath if needed
                 nodes = tree.cssselect(selector) if selector else []
                 
                 if not nodes:
@@ -329,7 +382,8 @@ class LXMLExtractionStrategy(ExtractionStrategyBase):
                         elif extract_type == "attribute":
                             extracted_values.append(node.get(attribute_name))
                         else:
-                            extracted_values.append(" ".join(node.text_content().split()))
+                            text = self._extract_text_from_node(node)
+                            extracted_values.append(text)
                     
                     output_data[field_name] = extracted_values
                 
@@ -340,7 +394,7 @@ class LXMLExtractionStrategy(ExtractionStrategyBase):
                     elif extract_type == "attribute":
                         output_data[field_name] = node.get(attribute_name)
                     else:
-                        output_data[field_name] = " ".join(node.text_content().split())
+                        output_data[field_name] = self._extract_text_from_node(node)
 
             else:
                 output_data[field_name] = None
@@ -378,7 +432,7 @@ def extract_with_strategy(
     return extracted_response.extracted_data
 
 
-class CSSExtractionStrategy:
+class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
     """
     Extraction strategy that uses Selectolax for HTML parsing, specifically for CSS selectors.
     
@@ -446,6 +500,15 @@ class CSSExtractionStrategy:
         """
         return self.extract(page_response, *args, **kwargs)
 
+    def _get_direct_text(self, node: HTMLParser) -> str:
+        return node.text(deep=True, separator=" ", strip=True)
+        
+    def _has_children(self, node: HTMLParser) -> bool:
+        return bool(node.css('*'))
+        
+    def _get_child_nodes(self, node: HTMLParser) -> list:
+        return node.css('*')
+        
     def _extract_data(self, tree: HTMLParser, extraction_configs: Dict[str, FieldConfig]) -> Dict[str, Any]:
         """Recursively extracts data based on the extraction configs.
         
@@ -498,7 +561,8 @@ class CSSExtractionStrategy:
                         elif extract_type == "attribute":
                             extracted_values.append(node.attributes.get(attribute_name))
                         else:
-                            extracted_values.append(node.text(deep=True, separator=" ", strip=True))
+                            text = self._extract_text_from_node(node)
+                            extracted_values.append(text)
                         
                     output_data[field_name] = extracted_values
                     
@@ -509,8 +573,8 @@ class CSSExtractionStrategy:
                     elif extract_type == "attribute":
                         output_data[field_name] = node.attributes.get(attribute_name)
                     else:
-                        output_data[field_name] = node.text(deep=True, separator=" ", strip=True)
-
+                        output_data[field_name] = self._extract_text_from_node(node)
+            
             else:
                 output_data[field_name] = None
 
