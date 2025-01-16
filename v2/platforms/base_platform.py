@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Type
 
-from playwright.async_api import Page
+from playwright.async_api import Page, Locator, ElementHandle
 from pydantic import BaseModel
 
 from v2.core.extraction import ExtractionStrategyBase
@@ -12,7 +12,7 @@ from v2.core.page_output import PageResponse
 
 class PageBase(ABC):
     ''' Page is something whose layout won't change, but contents may, e.g. notification page , message page, main feed'''
-    extraction_model: Type[BaseModel] | None = None  # here you give a pydantic model with the desired field you would like to extract
+    extraction_model: Type[BaseModel] | None = None
     extraction_strategy: Optional[ExtractionStrategyBase] = None
     url_pattern: str | None = None
 
@@ -44,6 +44,18 @@ class WebsitePlatform(ABC):
     @abstractmethod
     async def search_action(self, page: Page, search_params: Dict[str, str]) -> None:
         """Navigates to search page with the params given, implement search action, something like, click on search icon then type ,then press enter """
+        pass
+
+    @abstractmethod
+    async def _has_next_page(self, page: Page) -> Locator|ElementHandle|None:
+        """Check if there is a next page in pagination and return its locator
+        
+        Args:
+            page (Page): The page to check for next page button
+            
+        Returns:
+            Locator|ElementHandle|None : The locator/element for the next page button if it exists, None otherwise
+        """
         pass
 
     @abstractmethod
