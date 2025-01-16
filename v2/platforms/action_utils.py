@@ -12,7 +12,15 @@ async def scroll_to(page:Page, selector:str)->None:
     await page.locator(selector=selector).scroll_into_view_if_needed(timeout=5*1000)
     await page.wait_for_timeout(1000)
     
-async def scroll_container(page: Page, container_selector: str):
+async def scroll_container(page: Page, container_selector: str, scroll_step:int=300,  delay:int=1):
+    """
+    Scrolls the container to the bottom of the page.
+    
+    :param page: Playwright page object.
+    :param container_selector: CSS selector of the container to scroll.
+    :param scroll_step: Number of pixels to scroll down per step.
+    :param delay: Delay in milliseconds between scroll steps.
+    """
     
     try:
         # Wait for the container to be available
@@ -32,7 +40,6 @@ async def scroll_container(page: Page, container_selector: str):
             return
 
         # Scroll the container slowly to the end
-        scroll_step = 300  # Adjust the scroll step as needed
         while True:
             # Evaluate the current scroll position and height of the container
             scroll_position = await page.evaluate(
@@ -68,12 +75,12 @@ async def scroll_container(page: Page, container_selector: str):
                     }}
                 }}"""
             )
-            await page.wait_for_timeout(100)  # Adjust timeout for smooth scrolling
+            await page.wait_for_timeout(delay)  # Adjust timeout for smooth scrolling
 
     except Exception as e:
         logger.exception("Scolling error ", exc_info=e)
 
-async def expand_all_buttons(page: Page):
+async def expand_all_buttons(page: Page, timeout:int=1):
     """
     Finds and clicks all expandable buttons on the page that have text like 'Show more' or 'See more'.
     
@@ -93,13 +100,13 @@ async def expand_all_buttons(page: Page):
         logger.debug(f"Found {button_count} expandable button(s). Clicking them now...")
         for i in range(button_count):
             button = expandable_buttons.nth(i)
-            is_expanded = await button.get_attribute("aria-expanded", timeout=100)
+            is_expanded = await button.get_attribute("aria-expanded", timeout=timeout)
 
             # If the button is not expanded, click it
             if is_expanded != "true":
                 try: 
                     logger.debug(f"Clicking button {i+1} with text: {await button.inner_text()}")
-                    await button.click(timeout=5*1000)
+                    await button.click(timeout=timeout)
                 except TimeoutError:
                     logger.error("Timeout while clicking button.")
             else:
@@ -108,7 +115,7 @@ async def expand_all_buttons(page: Page):
         logger.error(f"An error occurred while expanding buttons: {e}")
         
 
-async def expand_buttons_by_selector(page: Page, selector: str):
+async def expand_buttons_by_selector(page: Page, selector: str, timeout:int=1):
     """
     Finds and clicks all buttons matching a specific CSS selector to expand their content.
 
@@ -135,8 +142,8 @@ async def expand_buttons_by_selector(page: Page, selector: str):
             # If the button is not already expanded, click it
             if is_expanded is None or is_expanded.lower() != "true":
                 print(f"Clicking button {i+1} with text: {await button.inner_text()}")
-                await button.click(timeout=100)
-                await page.wait_for_timeout(500)  # Allow time for content to expand
+                await button.click(timeout=timeout)
+                await page.wait_for_timeout(timeout=timeout)  # Allow time for content to expand
             else:
                 print(f"Button {i+1} is already expanded.")
     except Exception as e:
