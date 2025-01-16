@@ -623,7 +623,7 @@ class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
                         sub_tree = node
                         output_data[field_name] = self._extract_data(node, sub_fields)
                     elif extract_type == "attribute":
-                        output_data[field_name] = node.get(attribute_name)
+                        output_data[field_name] = node.attributes.get(attribute_name)
                     elif extract_type == "inner_text":
                         output_data[field_name] = self._get_inner_text(node)
                     else:  # "text"
