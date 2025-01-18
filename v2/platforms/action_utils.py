@@ -1,16 +1,66 @@
 # scrapper/action_handler.py
 import logging
 import re
+from typing import Callable
 
+from playwright.async_api import ElementHandle, Locator, Page, TimeoutError
+
+from v2.core.page_output import PageResponse, parse_page_response
 from v2.infrastructure.logging.logger import get_logger
-from playwright.async_api import Page, TimeoutError
 
 logger = get_logger(__name__)
 
+async def rolldown_next_button(page: Page, next_button_func:Callable[[Page], Locator | ElementHandle| None], action:Callable[[Page],None], current_depth: int = 1,
+                                max_depth: int = 10, timeout:int=1) -> list[PageResponse]:
+    """
+    Handle pagination and content collection
+    
+    Args:            
+        page:Page = a playwright page instance
+        next_button_func:Callable[[Page], Locator | ElementHandle| None] = a function that returns the next page button locator
+        action:Callable[[Page],None] = a function that performs the action on the page
+        current_depth:int = the current depth of the recursion
+        max_depth:int = the maximum depth of the recursion
+        timeout:int = the timeout for the action(miliseconds)
 
-async def scroll_to(page:Page, selector:str)->None:
-    await page.locator(selector=selector).scroll_into_view_if_needed(timeout=5*1000)
-    await page.wait_for_timeout(1000)
+    Returns:
+            list[PageResponse]: a list of PageResponse objects
+    """
+    content = []
+
+    try:
+        await action(page)
+        await page.wait_for_timeout(timeout=timeout) 
+        page_res = await parse_page_response(page)
+        content.append(page_res)
+
+        if next_button_func:
+            next_page_button = await next_button_func(page)
+
+            if next_page_button and (max_depth == -1 or current_depth < max_depth):
+                if not (await next_page_button.is_visible()):
+                    await next_page_button.scroll_into_view_if_needed()
+                await next_page_button.click()
+                await page.wait_for_url("**/**/*", wait_until="domcontentloaded")
+
+                next_content = await rolldown_next_button(
+                    page=page, next_button_func=next_button_func, action=action,
+                    current_depth=current_depth + 1, max_depth=max_depth, timeout=timeout
+                )
+                content.extend(next_content)
+    except Exception as e:
+        logger.error(f"Error in rolldown_next_button at depth {current_depth}, {page.url}: {e}")
+        content.append(await parse_page_response(page))
+                
+    return content
+
+
+async def scroll_to(page:Page, selector:str, timeout:int=1)->None:
+    try: 
+        await page.locator(selector=selector).scroll_into_view_if_needed(timeout=timeout)
+    except TimeoutError:
+        logger.error("Timeout while scrolling to element.")
+    await page.wait_for_timeout(timeout=timeout)
     
 async def scroll_container(page: Page, container_selector: str, scroll_step:int=300,  delay:int=1):
     """
@@ -75,7 +125,7 @@ async def scroll_container(page: Page, container_selector: str, scroll_step:int=
                     }}
                 }}"""
             )
-            await page.wait_for_timeout(delay)  # Adjust timeout for smooth scrolling
+            await page.wait_for_timeout(delay)
 
     except Exception as e:
         logger.exception("Scolling error ", exc_info=e)
