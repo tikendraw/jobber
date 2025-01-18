@@ -5,6 +5,7 @@ import json
 import logging
 import profile
 from logging import getLogger
+import time
 from typing import Any, Dict
 
 from v2.infrastructure.logging.logger import get_logger
@@ -17,7 +18,7 @@ logger = get_logger(__name__)
 
 
 
-async def set_filters(page:Page, filters:dict, reset:bool=False):
+async def set_filters(page:Page, filters:dict, reset:bool=False, timeout:int=100):
     """
     Handles label interception issue while interacting with filters.
 
@@ -33,7 +34,7 @@ async def set_filters(page:Page, filters:dict, reset:bool=False):
     # Open the filter modal
     filter_button = page.get_by_role('button', name='Show all filters')
     await filter_button.click()
-    await page.wait_for_timeout(2000)
+    await page.wait_for_timeout(timeout=timeout)
 
 
 
@@ -46,7 +47,7 @@ async def set_filters(page:Page, filters:dict, reset:bool=False):
 
     if reset:
         dialog.get_by_role('button', name='Reset').click()
-        await page.wait_for_timeout(1000)
+        await page.wait_for_timeout(timeout=timeout)
         logger.debug('Filters reset')
 
 
@@ -88,7 +89,7 @@ async def set_filters(page:Page, filters:dict, reset:bool=False):
     # Submit the filters
     show_results_button = page.get_by_role('button', name='Show results')
     await show_results_button.click()
-    await page.wait_for_timeout(1000)
+    await page.wait_for_timeout(timeout=timeout)
     
 
 
@@ -138,8 +139,8 @@ async def perform_login(page: Page, email: str='username', password: str='passwo
                     await click_on_sign_button_or_link(page)
                     await standard_login(page, email, password)
                     
-                finally:
-                    await page.wait_for_timeout(10 * 1000) #wait for redirection
+                # finally:
+                #     await page.wait_for_timeout() #wait for redirection
         else:
             print("No popup detected. Trying standard login flow or alternative...")
             await click_on_sign_button_or_link(page)
