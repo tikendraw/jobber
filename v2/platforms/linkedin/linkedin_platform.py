@@ -4,11 +4,15 @@ from typing import Dict, List
 
 from playwright.async_api import ElementHandle, Locator, Page
 
-from scrapper.page_action import scroll_to_element
 from v2.core.extraction.css_extraction import CSSExtractionStrategy
 from v2.core.page_output import PageResponse
 from v2.infrastructure.logging.logger import get_logger
-from v2.platforms.action_utils import expand_all_buttons, scroll_container
+from v2.platforms.action_utils import (
+    expand_all_buttons,
+    rolldown_next_button,
+    scroll_container,
+    scroll_to_element,
+)
 from v2.platforms.base_platform import PageBase, WebsitePlatform
 from v2.platforms.linkedin.linkedin_objects import (
     JobDescription,
@@ -109,16 +113,18 @@ class LinkedInPlatform(WebsitePlatform):
     async def after_search_action(self, page: Page, *args, **kwargs) -> List[PageResponse]:
         """Handles result pages for LinkedIn"""
         content = []
-        filter_dict = kwargs.get("filter_dict")
-        max_depth = kwargs.get("max_depth", 1)
+        max_depth = kwargs.pop("max_depth", 1)
 
-        result = await self._rolldown_next_button(
-            page=page,
-            next_button_func=self._has_next_page,
-            action=self.pages[0].page_action,  # Use JobListPage's page_action
-            current_depth=1,
-            max_depth=max_depth,
-            filter_dict=filter_dict,
-        )
-        content.extend(result)
+        try: 
+            result = await rolldown_next_button(
+                page=page,
+                next_button_func=self._has_next_page,
+                action=self.get_page_object_from_url(page.url).page_action,  
+                current_depth=1,
+                max_depth=max_depth,
+            )
+            content.extend(result)
+        except Exception as e:
+            logger.error(f"Error in after_search_action: {e}")
+            
         return content
