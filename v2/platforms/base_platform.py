@@ -1,14 +1,15 @@
 # platforms/base_platform.py
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type
 
 from playwright.async_api import Page, Locator, ElementHandle
 from pydantic import BaseModel
 
 from v2.core.extraction import ExtractionStrategyBase
-from v2.core.page_output import PageResponse
+from v2.infrastructure.logging import get_logger
 
+logger = get_logger(__name__)
 
 class PageBase(ABC):
     ''' Page is something whose layout won't change, but contents may, e.g. notification page , message page, main feed'''
