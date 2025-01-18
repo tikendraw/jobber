@@ -1,14 +1,14 @@
 # scraper/scraper_engine.py
 from asyncio import Semaphore, gather
-from typing import Any, Callable, Dict, List
+from pathlib import Path
+from typing import Dict, List
 
 from playwright.async_api import BrowserContext, Page, Request, Route, async_playwright
 
 from v2.core.page_output import PageResponse, parse_page_response
 from v2.infrastructure.logging.logger import get_logger
 from v2.platforms.base_platform import WebsitePlatform
-
-from .scraper_utils import read_cookies, save_cookies
+from v2.scraper.scraper_utils import read_cookies, save_cookies
 
 logger = get_logger(__name__)
 
@@ -24,16 +24,16 @@ class ScraperEngine:
         self.semaphore = Semaphore(max_concurrent)
 
     async def scrap(self, urls: List[str] = None, search_params: Dict = None, credentials: Dict = None,
-                    filters: Dict = None, *args, **kwargs) -> List[PageResponse]:
+                    filters: Dict = None,cookie_file:str|Path=None, *args, **kwargs) -> List[PageResponse]:
         """Main method to scrap the website"""
 
         results = []
-        cookie_file = kwargs.pop("cookie_file", 'cookies.jsonl')
+        cookie_file = cookie_file or  f'{self.platform.name}-cookies.jsonl'
         block_media = kwargs.pop("block_media", True)
         headless = kwargs.pop("headless", True)
         max_concurrent = kwargs.pop("max_concurrent", self.max_concurrent)
         max_depth = kwargs.pop('max_depth', 0)
-        
+
         self.set_semaphore(max_concurrent)
 
         async with async_playwright() as p:
@@ -46,7 +46,7 @@ class ScraperEngine:
 
             if credentials:
                 login_page = await context.new_page()
-                await login_page.goto(self.platform.login_url, wait_until='domcontentloaded')
+                await login_page.goto(self.platform.login_url, wait_until='commit')
                 try:
                     await self.platform.login(page=login_page, credentials=credentials)
                 except Exception as e:
@@ -75,29 +75,19 @@ class ScraperEngine:
                 results = await gather(*tasks)
                 results = [item for sublist in results if sublist for item in sublist] # flatten the list
                 
-            elif max_depth != 0:
+            else:
                 try:
-                    result = await self._rolldown_next_button(
-                        page=page,
-                        next_button_func=self.platform._has_next_page,
-                        action=self.platform.get_page_object_from_url(page.url).page_action,  # Use JobListPage's page_action
-                        current_depth=1,
-                        max_depth=max_depth,
-                        filter_dict=filters,
-                    )
-                    results.extend(result)
+                    results = await self.platform.after_search_action(page=page,max_depth=max_depth, **kwargs)
                 except Exception as e:
                     logger.error(f"Error while after search action: {e}", exc_info=True)
     
-            try:
-                logger.debug(f'Extracting data...{len(results)}')
-                results = await self._extract_data(results)
-                logger.debug(f'Extracted data...{len(results)}')
-            except Exception as e:
-                logger.error(f"Error while after search action: {e}", exc_info=True)
+    
+            logger.debug(f'Extracting data...{len(results)}')
+            results = await self._extract_data(results)
+            logger.debug(f'Extracted data...{len(results)}')
 
-            content = await context.cookies()
-            await save_cookies(content=content, cookie_file=cookie_file)
+
+            await save_cookies(context=context, cookie_file=cookie_file)
             await page.close()
             await context.close()
             await browser.close()
@@ -146,39 +136,6 @@ class ScraperEngine:
             await route.abort()
         else:
             await route.continue_()
-
-    async def _rolldown_next_button(self, page: Page, next_button_func:Callable, action:Callable, current_depth: int = 1,
-                                  max_depth: int = 10, filter_dict: dict = None) -> list[PageResponse]:
-        """Handle pagination and content collection"""
-        content = []
-
-        try:
-            # if filter_dict:
-            #     await self.apply_filters(page, filter_dict)
-
-            await action(page)
-            await page.wait_for_timeout(2000)
-            page_res = await parse_page_response(page)
-            content.append(page_res)
-
-            if next_button_func:
-                next_page_button = await next_button_func(page)
-
-                if next_page_button and (max_depth == -1 or current_depth < max_depth):
-                    if not (await next_page_button.is_visible()):
-                        await next_page_button.scroll_into_view_if_needed()
-                    await next_page_button.click()
-                    await page.wait_for_url("**/**/*", wait_until="domcontentloaded")
-
-                    next_content = await self._rolldown_next_button(
-                        page, next_button_func, action,
-                        current_depth + 1, max_depth, filter_dict
-                    )
-                    content.extend(next_content)
-        except Exception as e:
-            logger.error(f"Error in rolldown_next_button at depth {current_depth}: {e}")
-        
-        return content
 
     async def _extract_data(self, page_responses: List[PageResponse]) -> List[PageResponse]:
         """Extracts the data by the page strategy using concurrent tasks"""
