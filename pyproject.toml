@@ -7,8 +7,6 @@ readme = "README.md"
 packages = [
     { include = "v2" },
     { include = "config"},
-    { include = "linkedin"},
-    { include = "scrapper"},
 
 ]
 
