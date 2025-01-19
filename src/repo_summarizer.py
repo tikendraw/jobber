@@ -8,13 +8,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 class GitHubProjectSummarizer:
-    def __init__(self, llm:LLM, github_access_token:str=None):
+    def __init__(self, llm:LLM):
         
-        self.access_token = github_access_token or os.environ.get('GITHUB_ACCESS_TOKEN') 
-        if not self.access_token:
-            raise ValueError("GITHUB_ACCESS_TOKEN is not set in the environment file. or passed as an argument.")
-
-
         self.llm=llm
         github_project_summarizer = """
         You are an expert code summarizer. Analyze the project to summarize its technology stack, 
@@ -29,56 +24,31 @@ class GitHubProjectSummarizer:
         self.chain = self.prompt_template | self.llm
 
 
-    @staticmethod
-    def file_filter(file: str, allowed_extensions: list) -> bool:
-        """Filter function to select files based on allowed extensions."""
-        return any(file.endswith(ext) for ext in allowed_extensions)
-
-    def load_project_files(self, repo: str, creator: str, allowed_extensions: list, include_prs: bool = False):
-        """Load files from a GitHub repository."""
-        loader = GithubFileLoader(
-            access_token=self.access_token,
-            repo=repo,
-            creator=creator,
-            include_prs=include_prs,
-            file_filter=lambda file: self.file_filter(file, allowed_extensions),
-        )
-        return loader.load()
-
-    def format_project_content(self, documents) -> str:
-        """Combine project content into a single formatted string."""
-        all_texts = ''
-        for doc in documents:
-            all_texts += '---------------------\n'
-            all_texts += f"filename: {doc.metadata['path']}\n\n"
-            all_texts += f"{doc.page_content}\n\n"
-        return all_texts
-
-    def summarize(self, project_content: str) -> str:
-        """Generate a summary of the project using an LLM."""
-        return self.chain.invoke({"project_str": project_content})
-
-    def summarize_repository(self, repo: str, creator: str, allowed_extensions: list=['.md','.py']) -> str:
+    def summarize_repository(self, repo_content: str) -> str:
         """Main function to summarize a GitHub repository."""
-        documents = self.load_project_files(repo=repo, creator=creator, allowed_extensions=allowed_extensions)
-        project_content = self.format_project_content(documents)
-        return self.summarize(project_content)
+        return self.chain.invoke({"project_str": repo_content})
     
     
-    def summarize_multiple_repositories(self, repos: list, allowed_extensions: list = ['.md', '.py']) -> list:
-        """Summarize multiple repositories and return a list of dictionaries."""
+    def summarize_multiple_repositories(self, repos: list) -> list:
+        """Summarize multiple repositories and return a list of dictionaries.
+        Args:
+            repos (list): A list of dict of repositories, each containing 'repo_name' and 'repo_content' keys.
+            allowed_extensions (list): A list of file extensions to include in the summary.
+        Returns:
+            list: A list of dictionaries with 'repo'
+        """
         summaries = []
         for repo_data in repos:
             try:
-                repo_name = repo_data.get("repo")
-                creator = repo_data.get("creator")
-                if not repo_name or not creator:
+                repo_name = repo_data.get("repo_name")
+                repo_content = repo_data.get("repo_content")
+                if not repo_name or not repo_content:
                     raise ValueError("Each repository entry must contain 'repo' and 'creator' keys.")
 
-                summary = self.summarize_repository(repo=repo_name, creator=creator, allowed_extensions=allowed_extensions)
-                summaries.append({"repo": repo_name, "summary": summary})
+                summary = self.summarize_repository(repo_content=repo_content)
+                summaries.append({"repo_name": repo_name, "summary": summary})
             except Exception as e:
-                summaries.append({"repo": repo_data.get("repo", "Unknown"), "summary": f"Error: {e}"})
+                summaries.append({"repo_name": repo_data.get("repo_name"), "summary": f"Error: {e}"})
         return summaries
 
 
