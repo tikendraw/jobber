@@ -52,8 +52,8 @@ class LinkedInJobDetailPage(PageBase):
     async def page_action(self, page: Page):
         """Handle actions for job detail page"""
         try:
-            await scroll_to_element(page, scroll_to_end=True)
-            await expand_all_buttons(page)
+            await scroll_to_element(page, scroll_to_end=True, )
+            # await expand_all_buttons(page)
         except Exception as e:
             logger.exception("Failed to perform job detail page action", exc_info=e)
 
