@@ -227,11 +227,11 @@ async def save_repository_files_async(username, repo_name, branch, token, save_d
     files_content = await get_repository_files_async(username, repo_name, branch, token, allowed_extensions, excluded_extensions)
 
     # Define the save directory path
-    repo_save_path = Path(save_dir) / repo_name
+    repo_save_path:Path = Path(save_dir) / repo_name
 
     # Save each file to the local directory
     for file_path, content in files_content.items():
-        local_file_path = repo_save_path / file_path
+        local_file_path:Path = repo_save_path / file_path
         local_file_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure parent directories exist
         try:
             local_file_path.write_text(content)  # Write file content to disk
@@ -239,7 +239,9 @@ async def save_repository_files_async(username, repo_name, branch, token, save_d
         except Exception as e:
             print(f"Failed to save file: {file_path}. Error: {e}")
 
-    print(f"Repository {repo_name} saved successfully in {repo_save_path.absolute().as_posix()}")
+    pp = repo_save_path.absolute().as_posix()
+    print(f"Repository {repo_name} saved successfully in {pp}")
+    return pp
 
 
 
@@ -257,7 +259,7 @@ async def process_all_repositories(repos, access_token, save_dir,allowed_extensi
         None
     """
     async def process_repository(repo):
-        await save_repository_files_async(
+        return await save_repository_files_async(
             username=repo["username"],
             repo_name=repo["repo_name"],
             branch=repo["branch"],
@@ -267,7 +269,7 @@ async def process_all_repositories(repos, access_token, save_dir,allowed_extensi
             excluded_extensions=excluded_extensions
         )
     tasks = [process_repository(repo) for repo in repos]
-    await asyncio.gather(*tasks)
+    return await asyncio.gather(*tasks)
         
 
 if __name__ == "__main__":
@@ -292,8 +294,8 @@ if __name__ == "__main__":
     ]
 
     # Call the function to process repositories
-    asyncio.run(process_all_repositories(repos, ACCESS_TOKEN, save_dir='oladelete',allowed_extensions=allowed_extensions, excluded_extensions=excluded_extensions))
-
+    ss = asyncio.run(process_all_repositories(repos, ACCESS_TOKEN, save_dir='oladelete',allowed_extensions=allowed_extensions, excluded_extensions=excluded_extensions))
+    print(f'ss: {ss}')
     # a = get_all_repos(USERNAME, ACCESS_TOKEN)
     # print(len(a))
     # for i in a:
