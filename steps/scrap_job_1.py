@@ -25,19 +25,19 @@ if __name__ == "__main__":
     
     
     search_params = {
-		'keywords': 'data scientist',
+		'keyword': 'data scientist',
 	}
     credentials = {
 		'username': os.environ['LINKEDIN_EMAIL'],
 		'password': os.environ['LINKEDIN_PASSWORD'],
 	}
     kwarg = dict(
-		 		# search_params=search_params,
+		search_params=search_params,
 		# # urls = job_urls,
 		# credentials=credentials,
 		# # filters=filters,
-		# cookie_file = '/home/t/atest/scrappa/linkedin_cookie.jsonl',
-		# max_depth=4,  # Scrape first 2 pages
+		cookie_file = '/home/t/atest/scrappa/linkedin_cookie.jsonl',
+		max_depth=-1,  # Scrape first 2 pages
 		# block_media=True,
 		# headless=False,  # Set to True in production
 
