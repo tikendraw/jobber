@@ -1,21 +1,29 @@
 
 # scrapper/filter_handler.py
 import asyncio
-import json
-import logging
-import profile
+import re
 from logging import getLogger
-import time
 from typing import Any, Dict
 
-from v2.infrastructure.logging.logger import get_logger
 from playwright.async_api import BrowserContext, Locator, Page, expect
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-logger = get_logger(__name__)
+from v2.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
+def extract_job_id(url: str) -> str:
+    """
+    Extracts the job ID from a LinkedIn job URL.
+
+    :param url: LinkedIn job URL as a string
+    :return: Extracted job ID as a string or None if no match is found
+    """
+    pattern = r"job_id: (\d+)|/jobs/view/(\d+)/"
+    match = re.search(pattern, url)
+    if match:
+        return match.group(1) or match.group(2)
+    return None
 
 
 async def set_filters(page:Page, filters:dict, reset:bool=False, timeout:int=100):
