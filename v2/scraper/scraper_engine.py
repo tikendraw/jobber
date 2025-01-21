@@ -31,67 +31,69 @@ class ScraperEngine:
         cookie_file = cookie_file or  f'{self.platform.name}-cookies.jsonl'
         block_media = kwargs.pop("block_media", True)
         headless = kwargs.pop("headless", True)
+        logger.info("Browser lanching headless: {headless}")
         max_concurrent = kwargs.pop("max_concurrent", self.max_concurrent)
         max_depth = kwargs.pop('max_depth', 0)
 
         self.set_semaphore(max_concurrent)
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=headless)
+                context = await browser.new_context()
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=headless)
-            context = await browser.new_context()
+                cookies = await read_cookies(cookie_file=cookie_file)
+                if cookies:
+                    await context.add_cookies(cookies=cookies)
 
-            cookies = await read_cookies(cookie_file=cookie_file)
-            if cookies:
-                await context.add_cookies(cookies=cookies)
+                if credentials:
+                    login_page = await context.new_page()
+                    await login_page.goto(self.platform.login_url, wait_until='commit')
+                    try:
+                        await self.platform.login(page=login_page, credentials=credentials)
+                    except Exception as e:
+                        logger.error(f"Error while logging in: {e}", exc_info=True)
+                    await login_page.close()
 
-            if credentials:
-                login_page = await context.new_page()
-                await login_page.goto(self.platform.login_url, wait_until='commit')
-                try:
-                    await self.platform.login(page=login_page, credentials=credentials)
-                except Exception as e:
-                    logger.error(f"Error while logging in: {e}", exc_info=True)
-                await login_page.close()
+                page = await context.new_page()
 
-            page = await context.new_page()
+                if block_media:
+                    await page.route("**/**", self._block_resources)
 
-            if block_media:
-                await page.route("**/**", self._block_resources)
+                if search_params:
+                    try:
+                        await self.platform.search_action(page, search_params=search_params)
+                    except Exception as e:
+                        logger.error(f"Error while in search action: {e}", exc_info=True)
 
-            if search_params:
-                try:
-                    await self.platform.search_action(page, search_params=search_params)
-                except Exception as e:
-                    logger.error(f"Error while in search action: {e}", exc_info=True)
-
-            if filters:
-                try:
-                    await self.platform.apply_filters(page, filters=filters)
-                except Exception as e:
-                    logger.error(f"Error while applying filters: {e}", exc_info=True)
-
-            if urls:
-                tasks = [self._process_url_with_semaphore(context, url) for url in urls]
-                results = await gather(*tasks)
-                results = [item for sublist in results if sublist for item in sublist] # flatten the list
+                if filters:
+                    try:
+                        await self.platform.apply_filters(page, filters=filters)
+                    except Exception as e:
+                        logger.error(f"Error while applying filters: {e}", exc_info=True)
                 
-            else:
-                try:
-                    results = await self.platform.after_search_action(page=page,max_depth=max_depth, **kwargs)
-                except Exception as e:
-                    logger.error(f"Error while after search action: {e}", exc_info=True)
-    
-    
-            logger.debug(f'Extracting data...{len(results)}')
-            results = await self._extract_data(results)
-            logger.debug(f'Extracted data...{len(results)}')
+                if urls:
+                    tasks = [self._process_url_with_semaphore(context, url) for url in urls]
+                    results = await gather(*tasks)
+                    results = [item for sublist in results if sublist for item in sublist] # flatten the list
+                    
+                else:
+                    try:
+                        results = await self.platform.after_search_action(page=page,max_depth=max_depth, **kwargs)
+                    except Exception as e:
+                        logger.error(f"Error while after search action: {e}", exc_info=True)
+        
+        
+                logger.debug(f'Extracting data...{len(results)}')
+                results = await self._extract_data(results)
+                logger.debug(f'Extracted data...{len(results)}')
 
-
-            await save_cookies(context=context, cookie_file=cookie_file)
-            await page.close()
-            await context.close()
-            await browser.close()
-        return results
+                cookie_content = await context.cookies()
+                await save_cookies(content=cookie_content, cookie_file=cookie_file)
+                await page.close()
+                await context.close()
+                await browser.close()
+        finally:            
+            return results
     
     async def _process_url_with_semaphore(self, context: BrowserContext, url: str) -> List[PageResponse]:
         """
@@ -117,6 +119,7 @@ class ScraperEngine:
         """
         results = []
         try:
+            await page.reload()
             await page.goto(url, wait_until='domcontentloaded')
            
             page_obj = self.platform.get_page_object_from_url(url)
