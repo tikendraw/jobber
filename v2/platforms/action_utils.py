@@ -204,8 +204,8 @@ async def scroll_to_element(
     page: Page,
     selector: str = None,
     scroll_to_end: bool = False,
-    step_size: int = 100,
-    delay_ms: int = 200,
+    step_size: int = 300,
+    delay_ms: int = 1,
     max_attempts: int = 50  # Maximum number of scroll attempts to prevent infinite loops
 ) -> None:
     """
