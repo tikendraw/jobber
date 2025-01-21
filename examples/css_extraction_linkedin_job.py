@@ -5,7 +5,6 @@ from typing import List
 
 from pydantic import Field
 
-from scrapper.utils import extract_links_from_string
 from v2.core.extraction import (
     BeautifulSoupExtractionStrategy,
     CSSExtractionStrategy,
@@ -18,14 +17,15 @@ from v2.core.extraction import (
 from v2.core.extraction.css_extraction import LXMLExtractionStrategy
 from v2.core.page_output import PageResponse
 
-filename = '/home/t/atest/scrappa/saved_content/linkedin_20250115_122932/linkedin_job_page_1.json'
+filename = '/home/t/atest/scrappa/saved_content/linkedin_20250117_102330/linkedin_job_page_0.json' # for job list page
+filename = '/home/t/atest/scrappa/saved_content/linkedin_20250117_102330/linkedin_job_page_0.json' # for job view page
 
 with open(filename, 'r') as f:
     file = json.load(f)
 
 pr = PageResponse(**file)
-print(pr.url)
-print(pr.extracted_data)
+# print(pr.url)
+# print(pr.extracted_data)
 
 
 mapp = ExtractionMapping(
@@ -72,10 +72,36 @@ mapp = ExtractionMapping(
     }
 )
 
+mapp = ExtractionMapping(
+        extraction_configs={
+            'job_listings': FieldConfig(
+                selector="li.scaffold-layout__list-item",
+                multiple=True,
+                sub_fields={
+                    'job_id': FieldConfig(selector='data-occludable-job-id'),
+                    'job_title': FieldConfig(selector='a.job-card-container__link', extract_type='attribute', attribute_name='aria-label'),
+                    'job_link': FieldConfig(selector='a.job-card-container__link', extract_type='attribute', attribute_name='href'),
+                    "company_name": FieldConfig(selector='div.artdeco-entity-lockup__subtitle'),
+                    'insight': FieldConfig(selector='div.job-card-container__job-insight-text'),
+                    'location': FieldConfig(selector='div.artdeco-entity-lockup__caption'),
+                    'footer': FieldConfig(
+                        selector='ul.job-card-list__footer-wrapper.job-card-container__footer-wrapper',
+                        sub_fields={
+                            'ul1': FieldConfig(selector='li', multiple=True, extract_type='inner_text')
+                            }
+                        ),
+                    }
+                ),
+            }
+        )
+
 
 start = CSSExtractionStrategy(mapp)
 # start = LXMLExtractionStrategy(mapp)
 a = start.extract(pr)
 from pprint import pprint
 
-pprint(a.extracted_data, indent=4)
+pprint(len(a.extracted_data['job_listings']), indent=4)
+
+pprint(a.extracted_data['job_listings'], indent=4)
+
