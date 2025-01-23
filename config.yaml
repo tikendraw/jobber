@@ -4,3 +4,20 @@ path:
   saved_html_path: saved_html
 db:
   uri: sqlite:///linkedin.db
+cookie_file: ./linkedin_cookie.jsonl
+job_search_config:
+  search_params:
+    keywords: Data Scientist
+  max_depth: 0
+  headless: false
+job_page_config:
+  headless: false
+  max_concurrent: 5
+user_info:
+  linkedin_profile: https://www.linkedin.com/in/tikendraw/
+  github_profile: https://www.github.com/tikendraw
+  twitter_profile: https://www.x.com/tikendraw/
+  document_dir: ./tikendra_docs
+  stackoverflow_profile: null
+  headless: false
+  save_dir: /home/t/atest/scrappa/user_info
