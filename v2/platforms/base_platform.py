@@ -30,7 +30,8 @@ class WebsitePlatform(ABC):
     pages: List[PageBase]
     base_url = 'https://example.com'
     login_url = 'https://example.com/login/'
-
+    dummy_page:PageBase = None #fallback page for cases where the website doesnt have a login page
+    
     @property
     @abstractmethod
     def name(self) -> str:
@@ -81,4 +82,4 @@ class WebsitePlatform(ABC):
         for page in self.pages:
             if page.url_match(url):
                 return page
-        return None
+        return self.dummy_page
