@@ -548,7 +548,7 @@ class CSSExtractionStrategy(TextExtractionMixin, ExtractionStrategyBase):
     
     def _get_inner_text(self, node: HTMLParser) -> str:
         """Get all text from node and its descendants."""
-        return node.text(deep=True, strip=True)
+        return node.text(deep=True,separator=' ', strip=True)
 
     def _has_children(self, node: HTMLParser) -> bool:
         return bool(node.css('*'))
