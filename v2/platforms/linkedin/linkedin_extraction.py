@@ -85,3 +85,39 @@ def get_job_description_mapping() -> ExtractionMapping:
         }
     )
 
+
+
+def get_profile_mapping() -> ExtractionMapping:
+    """
+    Creates extraction mapping for LinkedIn job listings page
+    """
+    return ExtractionMapping(
+        extraction_configs={
+            'sections': FieldConfig(
+                selector="main.section",
+                extract_type='inner_text',
+                multiple=True,
+                ),
+            'more_links':FieldConfig(
+                selector="main.section.footer.a",
+                extract_type='attribute',
+                attribute_name='href'
+            ),
+            }
+        )
+
+    
+def get_main_div_mapping() -> ExtractionMapping:
+    """
+    Creates extraction mapping for LinkedIn job listings page
+    """
+    return ExtractionMapping(
+        extraction_configs={
+            'main': FieldConfig(
+                selector="div main",
+                extract_type='inner_text',
+                ),
+            }
+        )
+
+    
