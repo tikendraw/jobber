@@ -1,37 +1,14 @@
 import json
-from asyncio import selector_events
-from pathlib import Path
-from typing import List
 
-from pydantic import Field
+from v2.platforms.linkedin.linkedin_utils import extract_linkedin_profile_detail_links
 
-from scrapper.utils import extract_links_from_string
-from v2.core.extraction import (
-    BeautifulSoupExtractionStrategy,
-    CSSExtractionStrategy,
-    ExtractionConfig,
-    ExtractionMapping,
-    FieldConfig,
-    LLMExtractionStrategyHTML,
-    LLMExtractionStrategyMultiSource,
-)
-from v2.core.page_output import PageResponse
+file = "/home/t/atest/scrappa/user_info/saved_pages/21-01-2025--22-15-48 891534 profile_page-1.json"
 
-filename = '/home/t/atest/scrappa/saved_content/linkedin_20250114_213608/linkedin_job_page_0.json'
+with open(file, "r") as f:
+    dd = json.load(f)
+    
 
+html = dd['html']
 
-with open(filename, 'r') as f:
-    file = json.load(f)
-
-pr = PageResponse(**file)
-print(pr.url)
-print(pr.extracted_data)
-
-
-
-start = CSSExtractionStrategy(mapp)
-
-a = start.extract(pr)
-from pprint import pprint
-
-pprint(a.extracted_data, indent=4)
+a = extract_linkedin_profile_detail_links(html)
+print(a)
