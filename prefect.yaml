@@ -1,0 +1,45 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: scrappa
+prefect-version: 3.1.12
+
+# build section allows you to manage and build docker images
+build:
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push:
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.set_working_directory:
+    directory: /home/t/atest/scrappa
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name:
+  version:
+  tags: []
+  description:
+  schedule: {}
+  flow_name:
+  entrypoint:
+  parameters: {}
+  work_pool:
+    name:
+    work_queue_name:
+    job_variables: {}
+- name: My First Flow
+  version:
+  tags: []
+  concurrency_limit:
+  description: Get job id from the url
+  entrypoint: main.py:get_job_id
+  parameters: {}
+  work_pool:
+    name: test_prefect_initial
+    work_queue_name:
+    job_variables: {}
+  schedules: []
