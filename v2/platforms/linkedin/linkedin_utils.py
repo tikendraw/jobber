@@ -3,7 +3,7 @@
 import asyncio
 import re
 from logging import getLogger
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from playwright.async_api import BrowserContext, Locator, Page, expect
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
@@ -24,6 +24,22 @@ def extract_job_id(url: str) -> str:
     if match:
         return match.group(1) or match.group(2)
     return None
+
+def extract_linkedin_profile_detail_links(html_content: str) -> List[str]:
+# def extract_linkedin_links(html_content):
+    """
+    Extracts specific LinkedIn profile links from HTML content.
+
+    Args:
+    html_content: The HTML content as a string.
+
+    Returns:
+    A list of extracted LinkedIn links.
+    """
+    regex = r"https://www\.linkedin\.com/in/[a-zA-Z0-9-]+/(?:details/(?:certifications|skills|experience|projects)|recent-activity/all/)\?[^'\"]*"
+    links = re.findall(regex, html_content)
+    return links
+
 
 
 async def set_filters(page:Page, filters:dict, reset:bool=False, timeout:int=100):
