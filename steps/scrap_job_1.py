@@ -13,9 +13,9 @@ from v2.scraper.scraper_engine import ScraperEngine
 config = get_config()
 parameters = get_parameters_config()
 
-async def scrap_linkedin_jobs(**kwargs):
+async def scrap_linkedin(**kwargs):
 	linkedin_platform = LinkedInPlatform()
-	engine = ScraperEngine(platform=linkedin_platform, max_concurrent=2)
+	engine = ScraperEngine(platform=linkedin_platform)
 	try:
 		return await engine.scrap(**kwargs)
 	except Exception as e:
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 		# headless=False,  # Set to True in production
 
 	)
-    results = asyncio.run(scrap_linkedin_jobs())
+    results = asyncio.run(scrap_linkedin())
 
 	# # Save results
 	# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
