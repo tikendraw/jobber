@@ -33,4 +33,4 @@ def get_items_by_name(engine:Any, table:type[SQLModel], name: str, model:type[Ba
         results = session.exec(statement).all()
         return results
     
-engine = init_db()
+# engine = init_db()
