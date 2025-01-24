@@ -189,7 +189,7 @@ async def get_github_info(
         repo_contents: list = [
             make_context_from_dir(repo_path) for repo_path in repo_paths
         ]
-        # repo_contents = repo_contents[:20] # to check if works on few
+        # repo_contents = repo_contents[:10] # to check if works on few
 
         summarizer = LiteLLMProjectSummarizer(
             model_list=[
@@ -199,7 +199,7 @@ async def get_github_info(
             ]  # Primary model first, then fallbacks
         )
 
-        summries: list = await summarizer.asummarize_multiple_repositories(
+        summries: list = await summarizer.summarize_multiple_repositories(
             repo_contents
         )
 
