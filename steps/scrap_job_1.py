@@ -6,12 +6,10 @@ from datetime import datetime
 from pathlib import Path
 
 from v2.config.config_loader import get_config
-from v2.config.parameters import get_parameters_config
 from v2.platforms.linkedin.linkedin_platform import LinkedInPlatform
 from v2.scraper.scraper_engine import ScraperEngine
 
 config = get_config()
-parameters = get_parameters_config()
 
 async def scrap_linkedin(**kwargs):
 	linkedin_platform = LinkedInPlatform()
