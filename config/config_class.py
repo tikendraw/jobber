@@ -1,5 +1,6 @@
 from functools import partial
 from pathlib import Path
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -7,12 +8,21 @@ from config.baseconfig import YAMLConfigModel, get_base_config
 
 config_file = "./config.yaml"
 
-
+class DirSettings(BaseModel):
+    include_extensions: list[str] = ['.txt', '.md']
+    exclude_extensions: list[str] = ['.env', '.jpg']
+    recursive: bool = True
+    include_dirs: Optional[List[str]] = None
+    exclude_dirs: Optional[List[str]] = ['.env', 'venv', 'private']
+    
 class UserInfo(BaseModel):
     linkedin_profile_url: str | None = "https://www.linkedin.com/in/tikendraw/"
     github_profile_url: str | None = "https://www.github.com/tikendraw"
     twitter_profile_url: str | None = "https://www.x.com/tikendraw/"
-    document_dir: Path | None = "./tikendra_docs"
+    
+    # below are fields for document dir
+    document_dir: Path = "./tikendra_docs"
+    document_dir_config: DirSettings = DirSettings()
     stackoverflow_profile_url: str | None = None
 
     headless: bool = False
