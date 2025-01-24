@@ -3,16 +3,12 @@ import os
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
-from langchain_core.messages import AIMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
-from prefect import flow, task
-from prefect.context import get_run_context
-from sqlalchemy.inspection import exc
+from pydantic import validate_call
 
-from config.config_class import Config, JobSearchConfig, get_config
+from config.config_class import Config, get_config
 from src.create_context import make_context_from_dir
 from src.github_utils import (
     filter_out_forked_and_private_repos,
@@ -30,7 +26,8 @@ conf , _ = get_config()
 CONF:Config = conf
 COOKIE_FILE ='./linkedin_cookie.jsonl'
 
-def get_credentials_or_throw_error():
+@validate_call
+def get_credentials_or_throw_error() -> Dict[str, str]:
     EMAIL = os.environ.get('LOGIN_EMAIL', None),
     PASSWORD = os.environ.get('LOGIN_PASSWORD', None),
     assert EMAIL is not None and PASSWORD is not None, "Please set the 'LOGIN_EMAIL' and 'LOGIN_PASSWORD' in the environment variables"
@@ -38,7 +35,8 @@ def get_credentials_or_throw_error():
         'EMAIL': EMAIL, 'password':PASSWORD 
     }
     
-async def get_all_listed_jobs():
+@validate_call    
+async def get_all_listed_jobs() -> List[dict]:
     loc_conf = CONF.job_search_config
     search_params = loc_conf.search_params.model_dump()
     
@@ -67,7 +65,8 @@ async def get_all_listed_jobs():
     
     return [i for i in extracted_data if i.get('job_link') is not None] 
 
-async def scrap_job_pages(urls:list[dict])->list[dict]:
+@validate_call
+async def scrap_job_pages(urls: List[dict]) -> List[dict]:
     loc_conf = CONF.job_page_config
     
     credentials = get_credentials_or_throw_error()
@@ -95,7 +94,8 @@ async def scrap_job_pages(urls:list[dict])->list[dict]:
 
 
 
-async def scrap_linkedin_profile_info()-> str:
+@validate_call
+async def scrap_linkedin_profile_info(filepath:Path=None) -> str:
     
     loc_conf = CONF.user_info
     credentials = get_credentials_or_throw_error()
@@ -132,6 +132,11 @@ async def scrap_linkedin_profile_info()-> str:
         file.write_text(i.model_dump_json())
     
     linkedin_file = loc_conf.save_dir/'linkedin_profile.txt'
+    
+    if filepath:
+        linkedin_file = filepath
+        linkedin_file.parent.mkdir(exist_ok=True, parents=True)
+
     text = 'User Linkedin Profile Content\n\n'
     for page in all_pages:
         text += f'{page.url}\n'
@@ -145,21 +150,15 @@ async def scrap_linkedin_profile_info()-> str:
 
     return text
 
-from langchain_core.rate_limiters import InMemoryRateLimiter
-
-rate_limiter = InMemoryRateLimiter(
-    requests_per_second=0.24,  # <-- Can only make a request once every 4 seconds!!
-    check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
-    max_bucket_size=10,  # Controls the maximum burst size.
-)
-
-async def get_github_info(username:str, access_token:str=None, downloaded_repos_path:Path|str=None)->str:
+@validate_call
+async def get_github_info(
+    username: str, 
+    access_token: Optional[str] = None, 
+    downloaded_repos_path: Optional[Path] = None,
+    filepath:Path=None
+) -> str:
     loc_conf = CONF.user_info
     access_token = access_token or os.environ.get('GITHUB_ACCESS_TOKEN', None)
-    if isinstance(downloaded_repos_path, str):
-        downloaded_repos_path = Path(downloaded_repos_path)
-
-    assert isinstance(downloaded_repos_path, Path) , "downloaded_repos_path must be pathlib.Path or str"
     assert access_token is not None, "Please set the 'GITHUB_ACCESS_TOKEN' in the environment variables"
     repos = None
     try:
@@ -168,23 +167,29 @@ async def get_github_info(username:str, access_token:str=None, downloaded_repos_
                 repos = [i for i in downloaded_repos_path.iterdir()]
         if not repos:
             repos = await process_user_repositories(
-                username=username,  # Get from config instead of hardcoding
+                username=username,
                 access_token=access_token,
                 repo_filter=filter_out_forked_and_private_repos,
                 save_dir=loc_conf.save_dir/'github_repos'
             )
         
-        repo_contents: list = [make_context_from_dir(i) for i in repos]
-        repo_contents = repo_contents[:20] # to check if works on few 
+        
+        # Convert string paths to Path objects if needed
+        repo_paths = [Path(repo) if isinstance(repo, str) else repo for repo in repos]
+        repo_contents: list = [make_context_from_dir(repo_path) for repo_path in repo_paths]
+        # repo_contents = repo_contents[:20] # to check if works on few 
             
         summarizer = LiteLLMProjectSummarizer(
             model_list=["gemini/gemini-2.0-flash-exp", "anthropic/claude-3-sonnet", "gemini/gemini-1.5-flash-8b"]  # Primary model first, then fallbacks
         )
         
-        summries:list = await gather(*[summarizer.asummarize_repository(repo) for repo in repo_contents])
+        summries:list = await summarizer.asummarize_multiple_repositories( repo_contents)
         
         # return "\n\n".join(summary_contents)
         github_file = loc_conf.save_dir/'github_profile.txt'
+        if filepath:
+            github_file = filepath
+
         github_file.parent.mkdir(exist_ok=True, parents=True)
         text = 'Users Github Projects Summaries\n\n'
         
@@ -209,8 +214,52 @@ async def get_github_info(username:str, access_token:str=None, downloaded_repos_
         
         
         
-async def get_user_info(username:str,get_latest:bool=False):
-    loc_conf=CONF.user_info
+@validate_call
+async def _load_or_generate_content(
+    file_path: Path,
+    generator_func: Callable,
+    get_latest: bool = False,
+    generator_args: Optional[dict] = None
+) -> str:
+    """Helper function to load content from file or generate new content.
+    
+    Args:
+        file_path: Path to the file to load from/save to
+        generator_func: Async function to generate new content
+        get_latest: If True, skip file reading and generate new content
+        generator_args: Optional arguments to pass to generator_func
+    """
+    content = ""
+    if file_path.exists() and not get_latest:
+        try:
+            with file_path.open('r') as f:
+                content = f.read()
+        except Exception as e:
+            print(f"Error reading file {file_path}: {e}")
+            content = ""
+            
+    if not content:
+        if generator_args:
+            content = await generator_func(**generator_args)
+        else:
+            content = await generator_func()
+            
+        try:
+            file_path.write_text(content)
+            print(f"Wrote new content to {file_path}")
+        except Exception as e:
+            print(f"Error writing to file {file_path}: {e}")
+            
+    return content
+
+@validate_call
+async def get_user_info(
+    username: str,
+    get_latest: bool = False,
+    downloaded_repos_path: Optional[Path] = None
+) -> str:
+    loc_conf = CONF.user_info
+    dir_config  = loc_conf.document_dir_config
     
     # Create save directory if it doesn't exist
     loc_conf.save_dir.mkdir(exist_ok=True, parents=True)
@@ -219,42 +268,37 @@ async def get_user_info(username:str,get_latest:bool=False):
     github_file = loc_conf.save_dir/'github_profile.txt'
     document_file = loc_conf.save_dir/'user_documents.txt'
     
-    linked_profile = ""
-    github_info = ""
-    doc_info = ""
+    # Get LinkedIn profile
+    linked_profile = await _load_or_generate_content(
+        linkedin_file,
+        scrap_linkedin_profile_info,
+        get_latest
+    )
     
-    if not linkedin_file.exists() or get_latest:
-        linked_profile = await scrap_linkedin_profile_info()
-    else:    
-        try:
-            with linkedin_file.open('r') as f:
-                linked_profile = f.read()
-        except FileNotFoundError:
-            linked_profile = await scrap_linkedin_profile_info()
-
-    if not github_file.exists() or get_latest:
-        github_info = await get_github_info(username, downloaded_repos_path='./user_info/github_repos/')
-    else:   
-        try:
-            with github_file.open('r') as f:
-                github_info = f.read()
-        except FileNotFoundError:
-            github_info = await get_github_info(username)
-
-    if not document_file.exists() or get_latest:
-        if loc_conf.document_dir.exists():
-            doc_info = make_context_from_dir(loc_conf.document_dir, include=None, exclude=None, recursive=True)
-            try:
-                document_file.write_text(doc_info)
-            except Exception as e:
-                print(f"Error writing document file: {e}")
-    else:
-        try:
-            with document_file.open('r') as f:
-                doc_info = f.read()
-        except FileNotFoundError:
-            if loc_conf.document_dir.exists():
-                doc_info = make_context_from_dir(loc_conf.document_dir, include=None, exclude=None, recursive=True)
+    # Get GitHub info
+    github_info = await _load_or_generate_content(
+        github_file,
+        get_github_info,
+        get_latest,
+        {'username': username, 'downloaded_repos_path': downloaded_repos_path}
+    )
+    
+    # Get Document info
+    doc_info = ""
+    if loc_conf.document_dir.exists():
+        doc_info = await _load_or_generate_content(
+            document_file,
+            make_context_from_dir,
+            get_latest,
+            dict(
+                loc_conf.document_dir, 
+                include=dir_config.include_extensions, 
+                exclude=dir_config.exclude_extensions, 
+                recursive=dir_config.recursive,
+                include_dirs=dir_config.include_dirs,
+                exclude_dirs=dir_config.exclude_dirs
+                )
+        )
 
     docs = [d for d in [doc_info, linked_profile, github_info] if d]
     return '\n\n'.join(docs)
@@ -263,13 +307,11 @@ async def get_user_info(username:str,get_latest:bool=False):
 
     
 
-async def main():
-    info = await get_user_info(username='tikendraw')
-    # info = await get_github_info('tikendraw')
+@validate_call
+async def main() -> Optional[str]:
+    info = await get_user_info(username='tikendraw', get_latest=False, downloaded_repos_path='./user_info/github_repos/')
     print(info)
-    # jobs = await get_all_listed_jobs()
-    # pages = await scrap_job_pages(jobs)
-    # return pages
+    return info
         
 if __name__ == "__main__":
     import asyncio
