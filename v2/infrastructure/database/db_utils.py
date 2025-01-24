@@ -4,17 +4,18 @@ from typing import Any, Dict, List, Optional
 # from infrastructure.database.models import RawContent
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from v2.config.config_loader import get_config
+# from v2.config.config_loader import get_config
 from v2.infrastructure.database.base_model import BaseModel
+# 
+# config, _ = get_config()
 
-config, _ = get_config()
 
 
-
-def init_db(url:str=config.db.uri):
-    engine = create_engine(url, echo=True)
-    SQLModel.metadata.create_all(engine)
-    return engine
+def init_db(url:str=None):
+    if url:
+        engine = create_engine(url, echo=True)
+        SQLModel.metadata.create_all(engine)
+        return engine
 
 def store_raw_content(engine:Any, url: str, html: str, model: type[BaseModel] = None):
     with Session(engine) as session:
