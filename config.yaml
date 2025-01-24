@@ -14,10 +14,23 @@ job_page_config:
   headless: false
   max_concurrent: 5
 user_info:
-  linkedin_profile: https://www.linkedin.com/in/tikendraw/
-  github_profile: https://www.github.com/tikendraw
-  twitter_profile: https://www.x.com/tikendraw/
+  linkedin_profile_url: https://www.linkedin.com/in/tikendraw/
+  github_profile_url: https://www.github.com/tikendraw
+  twitter_profile_url: https://www.x.com/tikendraw/
   document_dir: ./tikendra_docs
-  stackoverflow_profile: null
+  document_dir_config:
+    include_extensions:
+    - .txt
+    - .md
+    exclude_extensions:
+    - .env
+    - .jpg
+    recursive: true
+    include_dirs: null
+    exclude_dirs:
+    - .env
+    - venv
+    - private
+  stackoverflow_profile_url: null
   headless: false
   save_dir: /home/t/atest/scrappa/user_info
