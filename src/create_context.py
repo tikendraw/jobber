@@ -108,10 +108,10 @@ def find_related_files(base_file_path: Path, directory: Path) -> Set[Path]:
 def make_context_from_dir(
     directory: Path,
     include: Tuple[str, ...] = (".py",'.md'),
-    exclude: Tuple[str, ...] = ('.ipynb', 'json', '.pkl', 'txt', '.pdf'),
+    exclude: Tuple[str, ...] = ('.ipynb', 'json', '.pkl', 'txt', '.pdf', '.csv'),
     recursive: bool = True,
     include_dirs: Optional[List[str]] = None,
-    exclude_dirs: Optional[List[str]] = None,
+    exclude_dirs: Optional[List[str]] = ['.venv', '.git', '.github', 'venv'],
     related_file: Optional[str] = None,
 ) -> str:
     """Processes the directory to generate structure and file contents."""
