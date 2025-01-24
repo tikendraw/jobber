@@ -282,9 +282,8 @@ async def save_repository_files_async(
         except Exception as e:
             print(f"Failed to save file: {file_path}. Error: {e}")
 
-    pp = repo_save_path.absolute().as_posix()
-    print(f"Repository {repo_name} saved successfully in {pp}")
-    return pp
+    print(f"Repository {repo_name} saved successfully in {repo_save_path.absolute().as_posix()}")
+    return repo_save_path
 
 
 async def process_all_repositories(
@@ -293,7 +292,7 @@ async def process_all_repositories(
     save_dir: str,
     allowed_extensions: set = {".py", ".md"},
     excluded_extensions: set = {".pkl", ".pt", ".h5", ".ipynb"},
-) -> List[str]:
+) -> List[Path]:
     """
     Process all repositories concurrently.
 
@@ -329,7 +328,7 @@ async def process_user_repositories(
     repo_filter: Callable[[Repository], bool] = None,
     allowed_extensions: set = {".py", ".md"},
     excluded_extensions: set = {".pkl", ".pt", ".h5", ".ipynb"},
-):
+) ->List[Path]:
     """
     Fetch, filter, and save repositories for a user.
 
@@ -342,7 +341,7 @@ async def process_user_repositories(
         excluded_extensions (set): Excluded file extensions for filtering files.
 
     Returns:
-        List[str]: List of paths to saved repositories.
+        List[Path]: List of paths to saved repositories.
     """
     # Step 1: Get all repositories for the user
     print(f"Fetching repositories for user: {username}")
