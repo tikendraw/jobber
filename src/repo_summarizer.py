@@ -2,111 +2,13 @@ import asyncio
 import time
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
-class TimedSemaphore:
-    """
-    A semaphore that automatically replenishes its resources at a specified interval.
-    
-    Allows controlling the rate of operations by limiting the number of acquisitions 
-    within a given time interval.
-    """
-    def __init__(self, limit: int, interval: float = 60.0):
-        """
-        Initialize the TimedSemaphore.
-        
-        Args:
-            limit (int): Maximum number of resources available in each interval.
-            interval (float, optional): Time interval in seconds. Defaults to 60 seconds.
-        """
-        self.limit = limit
-        self.interval = interval
-        self._semaphore = asyncio.Semaphore(limit)
-        self._replenish_task: Optional[asyncio.Task] = None
-        self._stop_event = asyncio.Event()
-
-    async def _replenish(self) -> None:
-        """
-        Continuously replenish the semaphore resources at the specified interval.
-        """
-        try:
-            while not self._stop_event.is_set():
-                await asyncio.sleep(self.interval)
-                
-                # Release resources up to the limit
-                for _ in range(self.limit):
-                    try:
-                        self._semaphore.release()
-                    except ValueError:
-                        # Ignore if the semaphore is already at its maximum
-                        break
-        except asyncio.CancelledError:
-            # Handle task cancellation gracefully
-            pass
-
-    def start(self) -> None:
-        """
-        Start the replenishment task.
-        """
-        if self._replenish_task is None:
-            self._stop_event.clear()
-            self._replenish_task = asyncio.create_task(self._replenish())
-
-    def stop(self) -> None:
-        """
-        Stop the replenishment task.
-        """
-        if self._replenish_task:
-            self._stop_event.set()
-            self._replenish_task.cancel()
-            self._replenish_task = None
-
-    async def acquire(self) -> None:
-        """
-        Acquire a resource from the semaphore.
-        
-        Blocks if no resources are available.
-        """
-        await self._semaphore.acquire()
-
-    async def __aenter__(self) -> 'TimedSemaphore':
-        """
-        Context manager entry point for async with statement.
-        
-        Returns:
-            TimedSemaphore: The semaphore instance.
-        """
-        await self.acquire()
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """
-        Context manager exit point. 
-        
-        In this implementation, we don't need to release the semaphore 
-        as the rate limiting handles it automatically.
-        """
-        pass
+from src.llm_base import LLMBase, TimedSemaphore
 
 
-class LiteLLMProjectSummarizer:
+class LiteLLMProjectSummarizer(LLMBase):
     def __init__(self, model_list: list[str], requests_per_minute: int = 15):
-        """Initialize with a list of model names for fallback
-        Args:
-            model_list (list[str]): List of model names to try in order (e.g. ["gpt-4", "claude-3-sonnet"])
-            requests_per_minute (int): Maximum number of requests per minute per model
-        """
-        from litellm import acompletion, completion
+        super().__init__(model_list, requests_per_minute)
         
-        self.model_list = model_list
-        self._completion = completion
-        self._acompletion = acompletion
-        
-        # Create a timed semaphore for each model
-        self._model_semaphores: Dict[str, TimedSemaphore] = {}
-        for model in model_list:
-            semaphore = TimedSemaphore(limit=requests_per_minute, interval=60.0)
-            semaphore.start()
-            self._model_semaphores[model] = semaphore
-
         self.prompt_template = """
 You are an advanced AI specializing in analyzing software and Data Science Project repositories. Your task is to thoroughly examine the contents of a GitHub project, including its README and relevant code files, to generate a detailed summary that:
 About the project: Provides a concise overview of the project's purpose, goals, and objectives. 
@@ -135,88 +37,42 @@ The output should be in a polished, professional markdown format, suitable for d
 project--
 {project_str}
 """
-
     def _format_prompt(self, project_str: str) -> str:
+        """Format the prompt with project content"""
         return self.prompt_template.format(project_str=project_str)
 
-    def summarize_repository(self, repo_content: str) -> str:
-        """Synchronously summarize a GitHub repository with fallback support and rate limiting."""
-        for model in self.model_list:
-            try:
-                # Synchronously acquire the semaphore
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(self._model_semaphores[model].acquire())
+    async def _process_response(self, response: Any, *args, **kwargs) -> str:
+        """Process LLM response into summary"""
+        return response.choices[0].message.content
 
-                try:
-                    response = self._completion(
-                        model=model,
-                        messages=[{"role": "user", "content": self._format_prompt(repo_content)}],
-                        temperature=0.7
-                    )
-                    return response.choices[0].message.content
-                except Exception as completion_error:
-                    if model == self.model_list[-1]:  # If this was the last model to try
-                        raise Exception(f"All models failed. Last error: {str(completion_error)}")
-                    continue  # Try next model if this one failed
-            except Exception as semaphore_error:
-                if model == self.model_list[-1]:  # If this was the last model to try
-                    raise Exception(f"Semaphore error: {str(semaphore_error)}")
-                continue  # Try next model if semaphore acquisition failed
+    async def summarize_repository(self, repo_content: str) -> str:
+        """Summarize a single repository asynchronously"""
+        prompt = self._format_prompt(repo_content)
+        return await self._execute_with_fallback(prompt=prompt)
 
-    async def asummarize_repository(self, repo_content: str) -> str:
-        """Asynchronously summarize a GitHub repository with fallback support and rate limiting."""
-        for model in self.model_list:
-            try:
-                # Asynchronously acquire the semaphore
-                await self._model_semaphores[model].acquire()
+    def summarize_repository_sync(self, repo_content: str) -> str:
+        """Synchronous version of repository summarization"""
+        return self.execute_sync(
+            prompt=self._format_prompt(repo_content)
+        )
 
-                try:
-                    response = await self._acompletion(
-                        model=model,
-                        messages=[{"role": "user", "content": self._format_prompt(repo_content)}],
-                        temperature=0.7
-                    )
-                    return response.choices[0].message.content
-                except Exception as completion_error:
-                    if model == self.model_list[-1]:  # If this was the last model to try
-                        raise Exception(f"All models failed. Last error: {str(completion_error)}")
-                    continue  # Try next model if this one failed
-            except Exception as semaphore_error:
-                if model == self.model_list[-1]:  # If this was the last model to try
-                    raise Exception(f"Semaphore error: {str(semaphore_error)}")
-                continue  # Try next model if semaphore acquisition failed
-
-    def summarize_multiple_repositories(self, repos: list) -> list:
-        """Synchronously summarize multiple repositories with fallback support.
-        Args:
-            repos (list): A list of repo_contents
-        Returns:
-            list: A list of dictionaries with 'repo_name' and 'summary'
-        """
+    async def summarize_multiple_repositories(self, repos: list) -> list:
+        """Summarize multiple repositories asynchronously"""
         summaries = []
         for n, repo_content in enumerate(repos, 1):
             try:
-                summary = self.summarize_repository(repo_content=repo_content)
-                summaries.append({"repo_name": n, "summary": summary})
+                summary = await self.summarize_repository(repo_content)
+                summaries.append({"repo_num": n, "summary": summary})
             except Exception as e:
-                summaries.append({"repo_name": n, "summary": f"Error: {e}"})
+                summaries.append({"repo_num": n, "summary": f"Error: {e}"})
         return summaries
 
-    async def asummarize_multiple_repositories(self, repos: list) -> list:
-        """Asynchronously summarize multiple repositories with fallback support.
-        Args:
-            repos (list): A list of repo_contents
-        Returns:
-            list: A list of dictionaries with 'repo_name' and 'summary'
-        """
-        summaries = []
-        for n, repo_content in enumerate(repos, 1):
-            try:
-                summary = await self.asummarize_repository(repo_content=repo_content)
-                summaries.append({"repo_name": n, "summary": summary})
-            except Exception as e:
-                summaries.append({"repo_name": n, "summary": f"Error: {e}"})
-        return summaries
+    def summarize_multiple_repositories_sync(self, repos: list) -> list:
+        """Synchronous version of multiple repository summarization"""
+        return self.execute_sync(
+            self.summarize_multiple_repositories,
+            repos
+        )
 
     def __del__(self):
         """Ensure semaphores are stopped when the object is deleted."""
