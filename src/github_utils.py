@@ -125,7 +125,7 @@ class Repository(BaseModel):
 
 
 def get_all_repos(username: str, access_token: str) -> list[Repository]:
-    repos= []
+    repos = []
     page = 1
     per_page = 100
     headers = {
@@ -174,12 +174,12 @@ async def fetch_file_content(client: httpx.AsyncClient, file_url: str, headers: 
 
 
 async def get_repository_files_async(
-    username:str,
-    repo_name:str,
-    branch:str,
-    access_token:str,
-    allowed_extensions:set=None,
-    excluded_extensions:set=None,
+    username: str,
+    repo_name: str,
+    branch: str,
+    access_token: str,
+    allowed_extensions: set = None,
+    excluded_extensions: set = None,
 ):
     """
     Retrieve all files and their contents for a specific branch in a repository using asynchronous requests.
@@ -282,7 +282,9 @@ async def save_repository_files_async(
         except Exception as e:
             print(f"Failed to save file: {file_path}. Error: {e}")
 
-    print(f"Repository {repo_name} saved successfully in {repo_save_path.absolute().as_posix()}")
+    print(
+        f"Repository {repo_name} saved successfully in {repo_save_path.absolute().as_posix()}"
+    )
     return repo_save_path
 
 
@@ -328,7 +330,7 @@ async def process_user_repositories(
     repo_filter: Callable[[Repository], bool] = None,
     allowed_extensions: set = {".py", ".md"},
     excluded_extensions: set = {".pkl", ".pt", ".h5", ".ipynb"},
-) ->List[Path]:
+) -> List[Path]:
     """
     Fetch, filter, and save repositories for a user.
 
