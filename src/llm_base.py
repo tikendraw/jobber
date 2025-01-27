@@ -1,7 +1,9 @@
 import asyncio
+import os
 from abc import ABC, abstractmethod
+from base64 import b64encode
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, OrderedDict, Union
 
 
 class TimedSemaphore:
@@ -64,7 +66,7 @@ class LLMBase(ABC):
         self._acompletion = acompletion
         
         # Create rate limiters for each model
-        self._model_semaphores: Dict[str, TimedSemaphore] = {}
+        self._model_semaphores: Dict[str, TimedSemaphore] = OrderedDict()
         for model in model_list:
             semaphore = TimedSemaphore(limit=requests_per_minute, interval=60.0)
             semaphore.start()
@@ -80,19 +82,54 @@ class LLMBase(ABC):
         """Process the LLM response into desired format"""
         pass
 
+    def _encode_image_to_base64(self, image_path: str) -> str:
+        """Convert image to base64 string"""
+        with open(image_path, "rb") as image_file:
+            return b64encode(image_file.read()).decode('utf-8')
+
+    def _format_vision_messages(self, text_content: str, image_paths: List[str]) -> List[Dict]:
+        """Format messages for vision models including images"""
+        messages = []
+        
+        # Add text content
+        content = [{"type": "text", "text": text_content}]
+        
+        # Add images
+        for image_path in image_paths:
+            if image_path.startswith("data:image"):  # Already base64
+                image_url = image_path
+            else:  # File path
+                base64_image = self._encode_image_to_base64(image_path)
+                image_url = f"data:image/jpeg;base64,{base64_image}"
+                
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": image_url}
+            })
+            
+        messages.append({"role": "user", "content": content})
+        return messages
+
     async def _execute_with_fallback(self, 
                                    prompt: str,
                                    temperature: float = 0.7,
+                                   image_paths: List[str] = None,
                                    *args,
                                    **kwargs) -> Any:
         """Execute LLM call with fallback support and rate limiting"""
         for model in self.model_list:
             try:
                 async with self._model_semaphores[model]:
+                    if image_paths:
+                        messages = self._format_vision_messages(prompt, image_paths)
+                    else:
+                        messages = [{"role": "user", "content": prompt}]
+                        
                     response = await self._acompletion(
                         model=model,
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=temperature
+                        messages=messages,
+                        temperature=temperature,
+                        response_format=kwargs.pop("response_format", None),
                     )
                     
                     try:
