@@ -1,3 +1,4 @@
+
 import json
 import os
 import re
@@ -20,7 +21,6 @@ def make_unformattable(x:str):
 
 
 template_doc = Path(__file__).parent/Path('./resume_maker/resume_formatting_code_instructions.md')
-print(template_doc)
 template_doc = template_doc.read_text()
 
 formatting_doc = Path(__file__).parent / Path('./resume_maker/resume_formatting_layout_instructions.md')
@@ -151,8 +151,8 @@ user content formatted as JSON that represents the resume data
             return x
     async def _process_response(self, 
                               response: Any, 
-                              template_style: str, 
                               output_class:BaseModel,
+                              template_style: str='sb2nov',     
                               output_file: Path|str = None) -> FullCVModel:
         """Process LLM response into YAML resume"""
         try:
@@ -169,7 +169,7 @@ user content formatted as JSON that represents the resume data
             # # Validate against template structure
             # if not self._validate_resume_structure(resume_yaml, template_style):
             #     raise ValueError("Generated resume does not match template structure")
-            if isinstance(output_class, CVModel):
+            if isinstance(resume_yaml, CVModel):
                 resume_yaml = FullCVModel.from_cvmodel(cv=resume_yaml.cv, theme=template_style)
 
             # Save to file if requested
@@ -366,27 +366,25 @@ async def make_resume(user_info:str, job_description:str, model_list:list[str], 
     rm = ResumeGenerator(model_list=model_list, requests_per_minute=requests_per_minute)
     return await rm.generate_resume(user_info=user_info, job_description=job_description,  output_file=output_file)
 
-@validate_call
-async def fix_resume(user_info:str, job_description:str, model_list:list[str], output_file:Path=None, requests_per_minute:int=15,):
+# @validate_call
+async def fix_resume(user_info:str, job_description:str, model_list:list[str], original_resume:FullCVModel,resume_images:list[str]=None, output_file:Path|None=None, requests_per_minute:int=15):
     rm = ResumeGenerator(model_list=model_list, requests_per_minute=requests_per_minute)
-    return await rm.analyze_and_regenerate(user_info=user_info, job_description=job_description,  output_file=output_file)
+    return await rm.analyze_and_regenerate(resume_images=resume_images, original_resume=original_resume, user_info=user_info, job_description=job_description)
 
 
-def render_resume(resume_model:FullCVModel, template_style:rendercv_templates = 'sb2nov', output_file:Path=None) -> Path:
+
+@validate_call
+def render_resume(resume_model:FullCVModel, output_file:Path=None) -> Path:
     try:
         import rendercv #noqa
     except ImportError:
         raise ImportError('Install rendercv with `pip install rendercv')
     
-    if template_style:
-        resume_model = FullCVModel(cv=resume_model.cv, theme=template_style)
     
     out_dir = Path.cwd()/'rendered_cv'/ datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
     out_dir.mkdir(exist_ok=True, parents=True)
-    resume_model.to_yaml(output_file)
+    resume_model.to_yaml(output_file, model_dump_kwargs={'exclude_unset':True, 'exclude_none':True})
     out_dir_str = out_dir.absolute().as_posix()
-    os.system(f'rendercv render {output_file.absolute().as_posix()} --pdf-path {out_dir_str} --png-path {out_dir_str}') 
+    os.system(f'rendercv render {output_file.absolute().as_posix()}  --output-folder-name {out_dir_str}') 
     
-    return {'pdf_file': list(out_dir.glob('*.pdf')), 'png_file': list(out_dir.glob('*.png'))}
-    
-    
+    return {'pdf_file': list(out_dir.glob('*.pdf')), 'png_file': [i for i in out_dir.glob('*.png')]}
