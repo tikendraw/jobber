@@ -45,7 +45,7 @@ class YAMLConfigModel(BaseModel):
             return cls(**config_dict)
         raise ValueError('Invalid YAML configuration')
     
-    def to_yaml(self, yaml_path: Path | str, **dump_kwargs: Any) -> None:
+    def to_yaml(self, yaml_path: Path | str, yaml_dump_kwargs:dict=None, model_dump_kwargs:dict=None ) -> None:
         """
         Save the current configuration to a YAML file.
         
@@ -61,11 +61,14 @@ class YAMLConfigModel(BaseModel):
             'sort_keys': False,
             'indent': 2
         }
-        default_kwargs.update(dump_kwargs)
+        if yaml_dump_kwargs:
+            default_kwargs.update(yaml_dump_kwargs)
+        
+        model_dump_kwargs = model_dump_kwargs or {}
         
         # Convert model to dictionary and dump to YAML
         with yaml_path.open('w') as file:
-            yaml.dump(self.model_dump(), file, **default_kwargs)
+            yaml.dump(self.model_dump(**model_dump_kwargs), file, **default_kwargs)
 
 
 
