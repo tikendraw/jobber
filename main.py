@@ -200,9 +200,7 @@ async def get_github_info(
             ]  # Primary model first, then fallbacks
         )
 
-        summries: list = await summarizer.summarize_multiple_repositories(
-            repo_contents
-        )
+        summries: list = await summarizer.summarize_multiple_repositories(repo_contents)
 
         # return "\n\n".join(summary_contents)
         github_file = loc_conf.save_dir / "github_profile.txt"
@@ -319,11 +317,9 @@ async def get_user_info(
     return "\n\n".join(docs)
 
 
-
-
-
 async def check_resume():
-    pass    
+    pass
+
 
 @validate_call
 async def main() -> Optional[str]:
