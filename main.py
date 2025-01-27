@@ -323,7 +323,7 @@ async def get_user_info(
 
 
 async def check_resume():
-    
+    pass    
 
 @validate_call
 async def main() -> Optional[str]:
