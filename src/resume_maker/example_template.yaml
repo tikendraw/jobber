@@ -1,0 +1,85 @@
+cv:
+  name: Tikendra Sahu
+  location: Raipur, Chhattisgarh, India
+  email: tikendrasahu.official@gmail.com
+  phone: +91-9630240843
+  social_networks:
+  - network: LinkedIn
+    username: tikendraw
+  - network: GitHub
+    username: tikendraw
+  sections:
+    Skills:
+    - label: Programming Languages
+      details: Python, SQL,
+    - label: ML/DL Frameworks
+      details: PyTorch, TensorFlow, Keras, Scikit-learn, NLTK
+    - label: Cloud Platforms
+      details: Google Cloud Platform (GCP), AWS, Azure
+    - label: Data Processing
+      details: Pandas, Polars, Airflow, Spark
+    - label: Other Skills
+      details: Linux, Git, Data Visualization, Exploratory Data Analysis, Predictive
+        Modeling, Machine Learning, Deep Learning, Data Science, Natural Language
+        Processing (NLP), Problem Solving, Critical Thinking, MLOps, Containerization,
+        Automation
+    Experience:
+    - location: null
+      start_date: '2023'
+      end_date: present
+      date: null
+      highlights:
+      - Developed and deployed NLP-based solutions for unstructured data processing.
+      - Utilized Python, Pandas, Scikit-learn and other libraries for data analysis
+        and model development.
+      - Applied Exploratory Data Analysis to extract insights and improve model performance.
+      summary: null
+      company: Freelance
+      position: Data Scientist
+    Projects:
+    - location: "sOME lOCATION WHERE IT HELD"
+      start_date: '2023'
+      end_date: '2024'
+      highlights:
+      - Implemented asynchronous processing for rapid queries and support for multiple
+        models (Llama 3 (8b,70b), Gemma, Gemma2, Mixtral).
+      - Created an easy-to-use CLI and Python API.
+      - Utilized Playwright for browser automation, and Containerization for deployment.
+      summary: Developed a Python library for free access to Groq's LLMs via user
+        simulation.
+      name: GroqOn
+
+    Education:
+    - location: null
+      start_date: '2017'
+      end_date: '2021'
+      date: null
+      highlights: null
+      summary: null
+      institution: Delhi University
+      area: Bachelor of Science
+      degree: BS
+    Certifications:
+    - location: null
+      start_date: null
+      end_date: null
+      date: '2022'
+      highlights: null
+      summary: null
+      name: What is Data Science?
+    - location: null
+      start_date: null
+      end_date: null
+      date: '2021'
+      highlights: null
+      summary: null
+      name: How Google does Machine Learning
+    - location: null
+      start_date: null
+      end_date: null
+      date: '2021'
+      highlights: null
+      summary: null
+      name: Neural Networks and Deep Learning
+      
+      
