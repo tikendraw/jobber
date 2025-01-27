@@ -3,6 +3,9 @@ user_info/*
 scrapped/*
 saved_content/*
 screenshots/*
+rendercv_output/*
+tikend_res/*
+rendered_cv/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
