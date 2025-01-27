@@ -374,17 +374,21 @@ async def fix_resume(user_info:str, job_description:str, model_list:list[str], o
 
 
 @validate_call
-def render_resume(resume_model:FullCVModel, output_file:Path=None) -> Path:
+def render_resume(resume_model:FullCVModel, output_dir:Path=None) -> Path:
     try:
         import rendercv #noqa
     except ImportError:
         raise ImportError('Install rendercv with `pip install rendercv')
     
-    
-    out_dir = Path.cwd()/'rendered_cv'/ datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    if output_dir is None:
+        output_dir = Path.cwd()/'rendered_cv'
+
+    now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    out_dir = output_dir / now
     out_dir.mkdir(exist_ok=True, parents=True)
-    resume_model.to_yaml(output_file, model_dump_kwargs={'exclude_unset':True, 'exclude_none':True})
+    output_yaml = out_dir/f'{now}.yaml'
+    resume_model.to_yaml(output_yaml, model_dump_kwargs={'exclude_unset':True, 'exclude_none':True})
     out_dir_str = out_dir.absolute().as_posix()
-    os.system(f'rendercv render {output_file.absolute().as_posix()}  --output-folder-name {out_dir_str}') 
+    os.system(f'rendercv render {output_yaml.absolute().as_posix()}  --output-folder-name {out_dir_str}') 
     
     return {'pdf_file': list(out_dir.glob('*.pdf')), 'png_file': [i for i in out_dir.glob('*.png')]}
