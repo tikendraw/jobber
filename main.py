@@ -9,6 +9,7 @@ import pandas as pd
 from pydantic import validate_call
 
 from config.config_class import Config, get_config
+from resume_generator import ResumeGenerator
 from src.create_context import make_context_from_dir
 from src.github_utils import (
     filter_out_forked_and_private_repos,
@@ -317,6 +318,12 @@ async def get_user_info(
     docs = [d for d in [doc_info, linked_profile, github_info] if d]
     return "\n\n".join(docs)
 
+
+
+
+
+async def check_resume():
+    
 
 @validate_call
 async def main() -> Optional[str]:
