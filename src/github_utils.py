@@ -203,6 +203,15 @@ async def get_repository_files_async(
 
         # Step 3: Fetch file contents asynchronously
         files_content = {}
+        
+        # Fetch repository info
+        repo_url = f"https://api.github.com/repos/{username}/{repo_name}"
+        repo_response = await client.get(repo_url, headers=headers)
+        repo_response.raise_for_status()
+        repo_data = repo_response.json()
+        
+        files_content['info.json'] =  repo_data
+        
         tasks = []
         for item in tree_data.get("tree", []):
             if item["type"] == "blob":  # Ensure it's a file
