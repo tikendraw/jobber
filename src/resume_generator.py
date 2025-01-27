@@ -1,17 +1,17 @@
 import json
+import os
 import re
-from doctest import Example
-from email.policy import default
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import yaml
 from litellm import supports_vision
-from pydantic import BaseModel, json_schema, validate_call
+from pydantic import BaseModel, validate_call
 
 from src.llm_base import LLMBase
 
-from .resume_maker.models import CVModel, FullCVModel
+from .resume_maker.models import CVModel, FullCVModel, rendercv_templates
 
 
 def make_unformattable(x:str):
@@ -366,4 +366,27 @@ async def make_resume(user_info:str, job_description:str, model_list:list[str], 
     rm = ResumeGenerator(model_list=model_list, requests_per_minute=requests_per_minute)
     return await rm.generate_resume(user_info=user_info, job_description=job_description,  output_file=output_file)
 
+@validate_call
+async def fix_resume(user_info:str, job_description:str, model_list:list[str], output_file:Path=None, requests_per_minute:int=15,):
+    rm = ResumeGenerator(model_list=model_list, requests_per_minute=requests_per_minute)
+    return await rm.analyze_and_regenerate(user_info=user_info, job_description=job_description,  output_file=output_file)
 
+
+def render_resume(resume_model:FullCVModel, template_style:rendercv_templates = 'sb2nov', output_file:Path=None) -> Path:
+    try:
+        import rendercv #noqa
+    except ImportError:
+        raise ImportError('Install rendercv with `pip install rendercv')
+    
+    if template_style:
+        resume_model = FullCVModel(cv=resume_model.cv, theme=template_style)
+    
+    out_dir = Path.cwd()/'rendered_cv'/ datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    out_dir.mkdir(exist_ok=True, parents=True)
+    resume_model.to_yaml(output_file)
+    out_dir_str = out_dir.absolute().as_posix()
+    os.system(f'rendercv render {output_file.absolute().as_posix()} --pdf-path {out_dir_str} --png-path {out_dir_str}') 
+    
+    return {'pdf_file': list(out_dir.glob('*.pdf')), 'png_file': list(out_dir.glob('*.png'))}
+    
+    
