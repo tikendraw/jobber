@@ -4,26 +4,31 @@ from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from rendercv.data import RenderCommandSettings
 
+from config.baseconfig import YAMLConfigModel
 
-def format_date(date_obj: Union[int, str, None]) -> str|int|None:
+rendercv_templates = Literal[
+    "classic", "sb2nov", "engineeringresumes", "engineeringclassic", "moderncv"
+]
+
+
+def format_date(date_obj: Union[int, str, None]) -> str | int | None:
     """Format date object to string in YYYY-MM-DD format"""
     if date_obj is None:
         return None
-    date_obj = str(date_obj).strip('\n')
+    date_obj = str(date_obj).strip("\n")
     try:
         return int(date_obj)
     except ValueError as e:
         return date_obj
 
+
 class BaseModelWithConfig(BaseModel):
     """Base model that excludes unset and None values when dumping"""
-    
+
     class Config:
         exclude_unset = True
         exclude_none = True
-        json_encoders = {
-            type(None): lambda _: None
-        }
+        json_encoders = {type(None): lambda _: None}
 
 
 class HighlightEntry(BaseModelWithConfig):
@@ -139,9 +144,23 @@ class CVContent(BaseModelWithConfig):
     email: str
     phone: str
     social_networks: List[SocialNetwork]
-    sections: dict[str, List[Union[OneLineEntry, NormalEntry, ExperienceEntry, EducationEntry, PublicationEntry, BulletEntry, str]]] = Field(
+    sections: dict[
+        str,
+        List[
+            Union[
+                OneLineEntry,
+                NormalEntry,
+                ExperienceEntry,
+                EducationEntry,
+                PublicationEntry,
+                BulletEntry,
+                str,
+            ]
+        ],
+    ] = Field(
         description="Sections of the CV containing different types of entries",
     )
+
 
 # ----------------------------------
 
@@ -222,17 +241,31 @@ class HighlightsSettings(BaseModelWithConfig):
 
 class EntryTypeTemplate(BaseModelWithConfig):
     """Template for different entry types in the CV"""
+
     template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    main_column_first_row_template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    main_column_second_row_template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    degree_column_width: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    date_and_location_column_template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    main_column_second_row_without_journal_template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
-    main_column_second_row_without_url_template: str | None = Field(default=None, exclude_none=True, exclude_unset=True)
+    main_column_first_row_template: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
+    main_column_second_row_template: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
+    degree_column_width: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
+    date_and_location_column_template: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
+    main_column_second_row_without_journal_template: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
+    main_column_second_row_without_url_template: str | None = Field(
+        default=None, exclude_none=True, exclude_unset=True
+    )
 
 
 class DesignSettings(BaseModelWithConfig):
     """Settings for CV design"""
+
     theme: str
     page: PageSettings
     colors: ColorSettings
@@ -245,19 +278,16 @@ class DesignSettings(BaseModelWithConfig):
     entry_types: dict[str, EntryTypeTemplate]
 
 
-
 class LocaleSettings(BaseModelWithConfig):
     """This class is the data model of the locale catalog. The values of each field
     updates the `locale` dictionary.
     """
 
     language: str = Field(
-        default="en",  
+        default="en",
     )
-    phone_number_format: Optional[Literal["national", "international", "E164"]] = (
-        Field(
-            default="national",
-        )
+    phone_number_format: Optional[Literal["national", "international", "E164"]] = Field(
+        default="national",
     )
     page_numbering_template: str = Field(
         default="NAME - Page PAGE_NUMBER of TOTAL_PAGES",
@@ -415,31 +445,29 @@ sb2nov_design = DesignSettings(
         summary_left_margin="0cm",
     ),
     entry_types={
-        "one_line_entry": EntryTypeTemplate(
-            template="**LABEL:** DETAILS"
-        ),
+        "one_line_entry": EntryTypeTemplate(template="**LABEL:** DETAILS"),
         "education_entry": EntryTypeTemplate(
             main_column_first_row_template=r"**INSTITUTION**\n*DEGREE in AREA*",
             degree_column_width="1cm",
             main_column_second_row_template=r"SUMMARY\nHIGHLIGHTS",
-            date_and_location_column_template=r"*LOCATION*\n*DATE*"
+            date_and_location_column_template=r"*LOCATION*\n*DATE*",
         ),
         "normal_entry": EntryTypeTemplate(
             main_column_first_row_template=r"**NAME**",
             main_column_second_row_template=r"SUMMARY\nHIGHLIGHTS",
-            date_and_location_column_template=r"*LOCATION*\n*DATE*"
+            date_and_location_column_template=r"*LOCATION*\n*DATE*",
         ),
         "experience_entry": EntryTypeTemplate(
             main_column_first_row_template=r"**POSITION**\n*COMPANY*",
             main_column_second_row_template=r"SUMMARY\nHIGHLIGHTS",
-            date_and_location_column_template=r"*LOCATION*\n*DATE*"
+            date_and_location_column_template=r"*LOCATION*\n*DATE*",
         ),
         "publication_entry": EntryTypeTemplate(
             main_column_first_row_template=r"**TITLE**",
             main_column_second_row_template=r"AUTHORS\nURL (JOURNAL)",
             main_column_second_row_without_journal_template=r"AUTHORS\nURL",
             main_column_second_row_without_url_template=r"AUTHORS\nJOURNAL",
-            date_and_location_column_template="DATE"
+            date_and_location_column_template="DATE",
         ),
     },
 )
@@ -489,13 +517,6 @@ sb2nov_locale = LocaleSettings(
 sb2nov_rendercv_settings = RenderCVSettings(
     date=date.today().strftime("%Y-%m-%d"), bold_keywords=[]
 )
-
-# engineeringresume theme
-from typing import List, Optional, Union
-
-from pydantic import BaseModel
-
-# Assuming the previous model definitions are imported or defined
 
 # Engineering Resumes Theme
 engineering_resumes_design = DesignSettings(
@@ -651,11 +672,10 @@ THEME_REGISTRY = {
     },
 }
 
-from config.baseconfig import YAMLConfigModel
-
 
 class FullCVModel(YAMLConfigModel):
     """Full CV model including content and settings"""
+
     cv: CVContent
     design: DesignSettings
     locale: LocaleSettings
@@ -668,7 +688,7 @@ class FullCVModel(YAMLConfigModel):
     def from_cvmodel(
         cls,
         cv: CVContent,
-        theme: Optional[str] = "engineeringresumes",
+        theme: rendercv_templates = "sb2nov",
         design: Optional[DesignSettings] = None,
         locale: Optional[LocaleSettings] = None,
         rendercv_settings: Optional[RenderCVSettings] = None,
