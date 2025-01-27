@@ -9,7 +9,7 @@ import pandas as pd
 from pydantic import validate_call
 
 from config.config_class import Config, get_config
-from resume_generator import ResumeGenerator
+from src.resume_generator import ResumeGenerator
 from src.create_context import make_context_from_dir
 from src.github_utils import (
     filter_out_forked_and_private_repos,
