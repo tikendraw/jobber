@@ -1,10 +1,13 @@
 # platforms/dummy_platform.py
-from typing import Dict
+import re
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from playwright.async_api import Page
 from pydantic import BaseModel
 
-from v2.core.page_output import parse_page_response
+from v2.core.extraction import LLMExtractionStrategyIMAGE
+from v2.core.page_output import PageResponse, parse_page_response
 from v2.platforms.action_utils import scroll_to_element
 from v2.platforms.base_platform import PageBase, WebsitePlatform
 
@@ -18,19 +21,19 @@ class DummyData(BaseModel):
     
 class DummyPage(PageBase):
     """Dummy page that matches any url, and extract html and text"""
-    extraction_model = None
-    extraction_strategy = None
+    extraction_model = DummyData
+    extraction_strategy = LLMExtractionStrategyIMAGE(model = 'gemini/gemini-2.0-flash-exp', extraction_model=extraction_model)
     url_pattern = r"^https?://.*"  # Match any http or https URL
 
     async def page_action(self, page: Page):
-        await scroll_to_element(page, scroll_to_end=True, step_size=300, delay_ms=1)
+        await scroll_to_element(page, scroll_to_end=True)
 
 
-class DummyPlatform(WebsitePlatform):
+class DummyWebsitePlatform(WebsitePlatform):
     name = 'Dummy'
     base_url = 'https://example.com'
     login_url = 'https://example.com/login/'
-    pages = []
+    pages = [DummyPage()]
 
     async def login(self, page: Page, credentials: Dict[str, str]) -> None:
         """Dummy login action - does nothing."""
