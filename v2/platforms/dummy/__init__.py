@@ -1,4 +1,4 @@
 # platforms/__init__.py
-from .dummy_platform import DummyPage, DummyPlatform
+from .dummy_platform import DummyPage, DummyWebsitePlatform
 
-__all__ = ['DummyPage', 'DummyPlatform']
+__all__ = ['DummyPage', 'DummyWebsitePlatform']
