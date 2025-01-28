@@ -1,6 +1,7 @@
 # src/github_utils.py
 import asyncio
 import base64
+import json
 import os
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Union
@@ -172,6 +173,22 @@ async def fetch_file_content(client: httpx.AsyncClient, file_url: str, headers: 
         print(f"Failed to fetch file: {file_url}. Error: {e}")
     return None
 
+async def get_repo_info(owner:str, repo:str)-> dict:
+    url = f"https://api.github.com/repos/{owner}/{repo}"
+    headers = {
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    async with httpx.AsyncClient() as client:
+        # Making the GET request
+        response = await client.get(url, headers=headers)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {}
+
 
 async def get_repository_files_async(
     username: str,
@@ -205,12 +222,9 @@ async def get_repository_files_async(
         files_content = {}
         
         # Fetch repository info
-        repo_url = f"https://api.github.com/repos/{username}/{repo_name}"
-        repo_response = await client.get(repo_url, headers=headers)
-        repo_response.raise_for_status()
-        repo_data = repo_response.json()
+        repo_data = await get_repo_info(username, repo_name)
         
-        files_content['info.json'] =  repo_data
+        files_content['info.json'] =  json.dumps(repo_data)
         
         tasks = []
         for item in tree_data.get("tree", []):
@@ -301,7 +315,7 @@ async def process_all_repositories(
     repos: List[Dict[str, str]],
     access_token: str,
     save_dir: str,
-    allowed_extensions: set = {".py", ".md"},
+    allowed_extensions: set = {".py", ".md",'.json', '.txt'},
     excluded_extensions: set = {".pkl", ".pt", ".h5", ".ipynb"},
 ) -> List[Path]:
     """
@@ -311,7 +325,7 @@ async def process_all_repositories(
         repos (list): List of dictionaries with repository details. {"username": "username", "repo_name": "repo_name", "branch": "branch"}
         access_token (str): GitHub access token.
         save_dir (str): Directory to save the files.
-        allowed_extensions (set): Set of allowed file extensions. ['.py', '.md', 'txt']
+        allowed_extensions (set): Set of allowed file extensions. ['.py', '.md', 'txt', 'json']
         excluded_extensions (set): Set of excluded file extensions. ['.pkl', '.pt', '.csv', '.joblib', '.ipynb', '.h5', '.jpg', '.png']
     Returns:
         List[str]: List of paths to saved repositories.
@@ -337,7 +351,7 @@ async def process_user_repositories(
     access_token: str,
     save_dir: str,
     repo_filter: Callable[[Repository], bool] = None,
-    allowed_extensions: set = {".py", ".md"},
+    allowed_extensions: set = {".py", ".md", '.txt', '.json'},
     excluded_extensions: set = {".pkl", ".pt", ".h5", ".ipynb"},
 ) -> List[Path]:
     """
