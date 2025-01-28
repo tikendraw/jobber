@@ -107,8 +107,8 @@ def find_related_files(base_file_path: Path, directory: Path) -> Set[Path]:
 
 def make_context_from_dir(
     directory: Path,
-    include: Tuple[str, ...] = (".py",'.md'),
-    exclude: Tuple[str, ...] = ('.ipynb', 'json', '.pkl', 'txt', '.pdf', '.csv'),
+    include: Tuple[str, ...] = (".py", '.md', '.json'),
+    exclude: Tuple[str, ...] = ('.ipynb', '.pkl', 'txt', '.pdf', '.csv'),
     recursive: bool = True,
     include_dirs: Optional[List[str]] = None,
     exclude_dirs: Optional[List[str]] = ['.venv', '.git', '.github', 'venv'],
