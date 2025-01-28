@@ -2,7 +2,7 @@
 from functools import partial
 from typing import Dict, List
 
-from playwright.async_api import ElementHandle, Locator, Page
+from playwright.async_api import BrowserContext, ElementHandle, Locator, Page
 
 from v2.core.extraction.css_extraction import CSSExtractionStrategy
 from v2.core.page_output import PageResponse
@@ -23,8 +23,8 @@ from v2.platforms.linkedin.linkedin_utils import perform_login, set_filters
 from .linkedin_extraction import (
     get_job_description_mapping,
     get_job_listings_mapping,
-    get_profile_mapping,
     get_main_div_mapping,
+    get_profile_mapping,
 )
 
 logger = get_logger(__name__)
@@ -63,14 +63,50 @@ class LinkedInJobDetailPage(PageBase):
         extraction_mapping=get_job_description_mapping()
     )
 
-    async def page_action(self, page: Page):
-        """Handle actions for job detail page"""
+    async def page_action(self, page: Page, context: BrowserContext = None, use_ai_agent: bool = False, **kwargs) -> None:
+        """Handle actions for job detail page
+        
+        Args:
+            page (Page): The page to perform actions on
+            context (BrowserContext): The browser context
+            use_ai_agent (bool): Whether to use AI agent for actions
+            **kwargs: Additional keyword arguments including ai_agent_kwargs if use_ai_agent is True
+        """
         try:
+            if use_ai_agent:
+                try:
+                    from browser_use import Agent, BrowserConfig
+                    from browser_use.browser.context import BrowserContextConfig
+
+                except ImportError:
+                    raise ImportError(
+                        "Browser-use package is required for AI agent functionality. "
+                        "Install it with: pip install browser-use"
+                    )
+                
+                ai_agent_kwargs = kwargs.pop('ai_agent_kwargs', {})
+                if not isinstance(ai_agent_kwargs, dict):
+                    raise ValueError("ai_agent_kwargs must be a dictionary")
+                
+                task = ai_agent_kwargs.pop('task')
+                llm = ai_agent_kwargs.pop('llm')
+                
+                if not task or not llm:
+                    raise ValueError("Both 'task' and 'llm' are required in ai_agent_kwargs")
+                
+                agent = Agent(
+                    task=task,
+                    llm=llm,
+                    browser_context=context,
+                    **ai_agent_kwargs
+                )
+                await agent.run()
+                return
+
             await scroll_to_element(
                 page,
                 scroll_to_end=True,
             )
-            # await expand_all_buttons(page)
         except Exception as e:
             logger.exception("Failed to perform job detail page action", exc_info=e)
 
@@ -117,7 +153,7 @@ class LinkedInPlatform(WebsitePlatform):
     base_url = "https://www.linkedin.com"
     login_url = "https://www.linkedin.com/login"
     dummy_page = LinkedInDummyPage() # fallback page
-    pages = [LinkedInJobListPage(), LinkedInJobDetailPage()]
+    pages = [LinkedInJobListPage(), LinkedInJobDetailPage(), LinkedInProfilePage()]
 
     async def login(self, page: Page, credentials: Dict[str, str]) -> None:
         """Logs in to LinkedIn"""

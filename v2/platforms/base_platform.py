@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Type
 
-from playwright.async_api import Page, Locator, ElementHandle
+from playwright.async_api import Browser, BrowserContext, ElementHandle, Locator, Page
 from pydantic import BaseModel
 
 from v2.core.extraction import ExtractionStrategyBase
@@ -23,7 +23,21 @@ class PageBase(ABC):
         return bool(re.search(self.url_pattern, url))
 
     @abstractmethod
-    async def page_action(self, page: Page):
+    async def page_action(self, page: Page, context:BrowserContext, use_ai_agent:bool=False, **kwargs) -> None:
+        ''' Perform actions on the page
+        
+        Args:
+            page (Page): The page to perform actions on
+            context (BrowserContext): The browser context
+            use_ai_agent (bool): Whether to use AI agent for actions
+            ai_agent_kwargs:dict: Additional keyword arguments for the AI agent
+            
+            **kwargs: Additional keyword arguments for the action
+        Returns:
+            None
+        
+        
+        '''
         pass
 
 class WebsitePlatform(ABC):

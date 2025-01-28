@@ -19,7 +19,7 @@ DEFAULT_MAX_RETRIES = 2
 DEFAULT_BLOCKED_RESOURCES = {
     "image", "media", 
     "font", 
-    # "stylesheet","other", "manifest", "texttrack"
+    # "stylesheet","other", "manifest", "texttrack" # needed this for good view
 }
 
 
@@ -44,7 +44,7 @@ class ScraperEngine:
         max_depth: Optional[int] = DEFAULT_MAX_DEPTH,
         max_retries: Optional[int] = DEFAULT_MAX_RETRIES,
         blocked_resources: Optional[Set[str]] = DEFAULT_BLOCKED_RESOURCES,
-        *args,  # Consider adding typing if the purpose is known
+        use_ai_agent: bool = False,
         **kwargs,    ) -> List[PageResponse]:
         """Main method to scrap the website"""
         if urls is None and search_params is None:
@@ -101,7 +101,11 @@ class ScraperEngine:
                 if urls:
                     tasks = [
                         self._process_url_with_semaphore(
-                            context, url, max_retries=max_retries
+                            context=context,
+                            url=url,
+                            max_retries=max_retries,
+                            use_ai_agent=use_ai_agent,
+                            **kwargs
                         )
                         for url in urls
                     ]
@@ -113,7 +117,11 @@ class ScraperEngine:
                 else:
                     try:
                         results = await self.platform.after_search_action(
-                            page=page, max_depth=max_depth, **kwargs
+                            page=page,
+                            context=context,
+                            use_ai_agent=use_ai_agent,
+                            max_depth=max_depth,
+                            **kwargs
                         )
                     except Exception as e:
                         logger.error(
@@ -133,19 +141,26 @@ class ScraperEngine:
             return results
 
     async def _process_url_with_semaphore(
-        self, context: BrowserContext, url: str, max_retries: int
+        self, context: BrowserContext, url: str, max_retries: int, use_ai_agent: bool = False, **kwargs
     ) -> List[PageResponse]:
         """
         Processes a single URL, navigates to it, and then extracts data. Uses semaphore.
         """
         async with self.semaphore:
             page = await context.new_page()
-            results = await self._process_url(page, url, max_retries)
+            results = await self._process_url(
+                page=page,
+                url=url,
+                max_retries=max_retries,
+                context=context,
+                use_ai_agent=use_ai_agent,
+                **kwargs
+            )
             await page.close()
             return results
 
     async def _process_url(
-        self, page: Page, url: str, max_retries: int = 3
+        self, page: Page, url: str, max_retries: int = 3, context: BrowserContext = None, use_ai_agent: bool = False, **kwargs
     ) -> List[PageResponse]:
         results = []
         for attempt in range(max_retries):
@@ -155,7 +170,12 @@ class ScraperEngine:
 
                 page_obj = self.platform.get_page_object_from_url(url)
                 if page_obj:
-                    await page_obj.page_action(page)
+                    await page_obj.page_action(
+                        page=page,
+                        context=context,
+                        use_ai_agent=use_ai_agent,
+                        **kwargs
+                    )
 
                 page_res = await parse_page_response(page)
                 results.append(page_res)
