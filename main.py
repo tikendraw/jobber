@@ -9,13 +9,13 @@ import pandas as pd
 from pydantic import validate_call
 
 from config.config_class import Config, get_config
-from src.resume_generator import ResumeGenerator
 from src.create_context import make_context_from_dir
 from src.github_utils import (
     filter_out_forked_and_private_repos,
     process_user_repositories,
 )
 from src.repo_summarizer import LiteLLMProjectSummarizer
+from src.resume_generator import ResumeGenerator
 from steps.scrap_job_1 import scrap_linkedin
 from v2.core.page_output import PageResponse
 from v2.platforms.linkedin.linkedin_utils import (
@@ -166,7 +166,9 @@ async def get_github_info(
     access_token: Optional[str] = None,
     downloaded_repos_path: Optional[Path] = None,
     filepath: Path = None,
+    model_list: Optional[List[str]] = None,
 ) -> str:
+    model_list = model_list or ["gemini/gemini-2.0-flash-exp", "gemini/gemini-1.5-flash-8b"]
     loc_conf = CONF.user_info
     access_token = access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
     assert (
@@ -192,12 +194,7 @@ async def get_github_info(
         ]
         # repo_contents = repo_contents[:10] # to check if works on few
 
-        summarizer = LiteLLMProjectSummarizer(
-            model_list=[
-                "gemini/gemini-2.0-flash-exp",
-                "anthropic/claude-3-sonnet",
-                "gemini/gemini-1.5-flash-8b",
-            ]  # Primary model first, then fallbacks
+        summarizer = LiteLLMProjectSummarizer(model_list=model_list
         )
 
         summries: list = await summarizer.summarize_multiple_repositories(repo_contents)
